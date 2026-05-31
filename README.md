@@ -2,63 +2,92 @@
 
 **"Build it yourself" interview questions — implement core data structures and system components without using Java built-in libraries.**
 
-> **10 implementations** | **4 categories** | **Java 21 + Maven** | **Top 10 most-asked at FAANG**
+> **36 implementations** | **5 categories** | **2 cheatsheets** | **Java 21 + Maven** | **Top FAANG questions**
 
 ```
-Category 1  [==========]  Cache              LRU, LFU                    2 files
-Category 2  [==========]  Data Structures    HashMap, Trie, Heap, BST    4 files
-Category 3  [==========]  Concurrency        BlockingQueue, ThreadPool, RateLimiter  3 files
-Category 4  [==========]  Design             BST Iterator                1 file
+Category 1  [==========]  Data Structures    HashMap, LinkedList, ArrayList, Stack, Queue, Deque, Heap, Trie, BST, Graph   10 files
+Category 2  [==========]  Cache              LRU, LFU, TTL, Write-Through/Back                                            4 files
+Category 3  [==========]  Concurrency        ThreadPool, BlockingQueue, ReadWriteLock, RateLimiter, Semaphore, Latch       7 files
+Category 4  [==========]  Design             Iterator, Observer, PubSub, ConnectionPool, Logger, Hashing, EventBus, Future 8 files
+Category 5  [==========]  Algorithms         MergeSort, QuickSort, StringBuilder, Comparator, atoi, Streams, Builder       7 files
 ```
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-
-- **JDK 21+**
-- **Maven 3.9+**
-
-### Build & Run
-
 ```bash
 cd DSA_Interview
-
-# Compile all files
 mvn compile
-
-# Run any implementation
 java --enable-preview -cp target/classes dsa.cache.LRUCache
-java --enable-preview -cp target/classes dsa.data_structures.MyHashMap
-java --enable-preview -cp target/classes dsa.concurrency.RateLimiter
-java --enable-preview -cp target/classes dsa.data_structures.Trie
-java --enable-preview -cp target/classes dsa.concurrency.MyBlockingQueue
-java --enable-preview -cp target/classes dsa.concurrency.MyThreadPool
-java --enable-preview -cp target/classes dsa.data_structures.MinHeap
-java --enable-preview -cp target/classes dsa.cache.LFUCache
-java --enable-preview -cp target/classes dsa.design.BSTIterator
-java --enable-preview -cp target/classes dsa.data_structures.BinarySearchTree
 ```
 
-**From IntelliJ IDEA:** Right-click any file → **Run**
+**From IntelliJ:** Right-click any file → **Run**
 
 ---
 
-## Top 10 Implementations (Ranked by Interview Frequency)
+## All 36 Implementations
 
-| # | Implementation | Category | Difficulty | Companies | Key Data Structure |
-|---|---------------|----------|-----------|-----------|-------------------|
-| 1 | **LRU Cache** | Cache | Medium | All FAANG | HashMap + Doubly Linked List |
-| 2 | **HashMap** | Data Structures | Medium | Amazon, Google, Microsoft | Array of buckets + chaining |
-| 3 | **Rate Limiter** | Concurrency | Medium-Hard | Google, Amazon, Meta | Token Bucket + Sliding Window |
-| 4 | **Trie** | Data Structures | Medium | Google, Meta, Amazon | TrieNode with children[26] |
-| 5 | **BlockingQueue** | Concurrency | Hard | Amazon, Google, Microsoft | Lock + 2 Conditions |
-| 6 | **Thread Pool** | Concurrency | Hard | Amazon, Google, Microsoft | Workers + BlockingQueue |
-| 7 | **Min-Heap** | Data Structures | Medium | Google, Amazon, Meta | Array-based complete tree |
-| 8 | **LFU Cache** | Cache | Hard | Amazon, Google, Meta | 3 HashMaps + LinkedHashSet |
-| 9 | **BST Iterator** | Design | Medium | Google, Meta, Apple | Stack-based in-order |
-| 10 | **BST** | Data Structures | Medium | Amazon, Microsoft, Apple | Recursive insert/delete |
+### Data Structures (10)
+
+| # | Implementation | File | Key Concepts | Companies |
+|---|---------------|------|-------------|-----------|
+| 1 | HashMap | `MyHashMap.java` | Buckets, chaining, resize at 0.75 | Amazon, Google, Microsoft |
+| 2 | LinkedList (Doubly) | `MyLinkedList.java` | addFirst/Last, remove, reverse | Amazon, Microsoft, Meta |
+| 3 | ArrayList | `MyArrayList.java` | Auto-resize 1.5x, amortized O(1) | Amazon, Google |
+| 4 | Stack + Min-Stack | `MyStack.java` | getMin() O(1) via parallel stack | Amazon, Microsoft |
+| 5 | Queue using Stacks | `QueueUsingStacks.java` | Two stacks, lazy transfer | Amazon, Google, Meta |
+| 6 | Deque / Circular Buffer | `CircularDeque.java` | Circular array, modular arithmetic | Google, Amazon |
+| 7 | Min-Heap | `MinHeap.java` | Array tree, siftUp/siftDown | Google, Amazon, Meta |
+| 8 | Trie | `Trie.java` | insert/search/startsWith/delete | Google, Meta, Amazon |
+| 9 | BST | `BinarySearchTree.java` | Insert, delete (3 cases), validate | Amazon, Microsoft |
+| 10 | Graph | `Graph.java` | Adjacency list, BFS, DFS, hasPath | Google, Meta, Amazon |
+
+### Cache (4)
+
+| # | Implementation | File | Key Concepts | Companies |
+|---|---------------|------|-------------|-----------|
+| 11 | **LRU Cache** | `LRUCache.java` | HashMap + Doubly Linked List, O(1) | **All FAANG** (#1 asked) |
+| 12 | LFU Cache | `LFUCache.java` | 3 HashMaps + LinkedHashSet | Amazon, Google, Meta |
+| 13 | TTL Cache | `TTLCache.java` | Lazy expiration, timestamps | Amazon, Google, Microsoft |
+| 14 | Write-Through/Back | `WriteThroughCache.java` | Sync vs deferred writes | Amazon, Google |
+
+### Concurrency (7)
+
+| # | Implementation | File | Key Concepts | Companies |
+|---|---------------|------|-------------|-----------|
+| 15 | Thread Pool | `MyThreadPool.java` | Worker threads + task queue | Amazon, Google, Microsoft |
+| 16 | BlockingQueue | `MyBlockingQueue.java` | Lock + 2 Conditions | Amazon, Google, Microsoft |
+| 17 | ReadWriteLock | `MyReadWriteLock.java` | Multi-reader, exclusive writer | Google, Amazon |
+| 18 | Rate Limiter | `RateLimiter.java` | Token Bucket + Sliding Window | Google, Amazon, Meta |
+| 19 | Producer-Consumer | `ProducerConsumer.java` | Bounded buffer, wait/notify | Amazon, Microsoft |
+| 20 | CountDownLatch | `MyCountDownLatch.java` | One-shot countdown | Google, Amazon |
+| 21 | Semaphore | `MySemaphore.java` | Permit-based access control | Google, Amazon, Microsoft |
+
+### Design Components (8)
+
+| # | Implementation | File | Key Concepts | Companies |
+|---|---------------|------|-------------|-----------|
+| 22 | BST Iterator | `BSTIterator.java` | Stack-based in-order, O(h) space | Google, Meta, Apple |
+| 23 | Observer Pattern | `ObserverPattern.java` | Subscribe/notify, event map | Amazon, Google |
+| 24 | Pub-Sub System | `PubSubSystem.java` | Topic routing, async ExecutorService | Amazon, Google, Meta |
+| 25 | Connection Pool | `ConnectionPool.java` | Semaphore + BlockingQueue | Amazon, Microsoft |
+| 26 | Logger | `Logger.java` | Singleton, levels, appender strategy | Amazon, Microsoft |
+| 27 | Consistent Hashing | `ConsistentHashing.java` | TreeMap ring, virtual nodes | Google, Amazon, Meta |
+| 28 | Event Bus | `EventBus.java` | on/off/once/emit | Meta, Google |
+| 29 | CompletableFuture | `MyCompletableFuture.java` | complete/get/thenApply chain | Google, Amazon |
+
+### Algorithms & Java-Specific (7)
+
+| # | Implementation | File | Key Concepts | Companies |
+|---|---------------|------|-------------|-----------|
+| 30 | MergeSort | `MergeSort.java` | Divide & conquer, stable, O(n log n) | Microsoft, Google |
+| 31 | QuickSort | `QuickSort.java` | Lomuto partition, random pivot | Google, Microsoft |
+| 32 | StringBuilder | `MyStringBuilder.java` | Dynamic char array, avoid O(n^2) concat | Amazon, Microsoft |
+| 33 | Custom Comparator | `CustomComparator.java` | Comparable, Comparator, thenComparing | Amazon, Google, Meta |
+| 34 | atoi | `MyAtoi.java` | Whitespace, sign, overflow handling | Amazon, Microsoft, Meta |
+| 35 | Custom Stream Ops | `CustomStreamOps.java` | map/filter/reduce/flatMap pipeline | Google, Amazon |
+| 36 | Immutable + Builder | `ImmutableClassBuilder.java` | final class, defensive copy, Builder | Amazon, Google, Apple |
 
 ---
 
@@ -66,73 +95,71 @@ java --enable-preview -cp target/classes dsa.data_structures.BinarySearchTree
 
 ```
 src/main/java/dsa/
-├── cache/
-│   ├── LRUCache.java          # #1: HashMap + Doubly Linked List, O(1) get/put
-│   └── LFUCache.java          # #8: 3 HashMaps + LinkedHashSet, O(1) get/put
-│
-├── data_structures/
-│   ├── MyHashMap.java          # #2: Array of buckets, chaining, resize at 0.75 load
-│   ├── Trie.java               # #4: Prefix tree, insert/search/startsWith/delete
-│   ├── MinHeap.java            # #7: Array-based, siftUp/siftDown, O(log n) insert/extract
-│   └── BinarySearchTree.java   # #10: Insert/search/delete (3 cases)/validate/traversal
-│
-├── concurrency/
-│   ├── RateLimiter.java        # #3: Token Bucket + Sliding Window Log
-│   ├── MyBlockingQueue.java    # #5: ReentrantLock + 2 Conditions (notFull, notEmpty)
-│   └── MyThreadPool.java       # #6: Worker threads + task queue + shutdown
-│
-└── design/
-    └── BSTIterator.java        # #9: Stack-based in-order traversal, O(1) avg next()
+├── data_structures/    (10)  HashMap, LinkedList, ArrayList, Stack, Queue, Deque, Heap, Trie, BST, Graph
+├── cache/              (4)   LRU, LFU, TTL, Write-Through
+├── concurrency/        (7)   ThreadPool, BlockingQueue, RWLock, RateLimiter, ProducerConsumer, Latch, Semaphore
+├── design/             (8)   Iterator, Observer, PubSub, ConnPool, Logger, ConsistentHash, EventBus, Future
+└── algorithms/         (7)   MergeSort, QuickSort, StringBuilder, Comparator, atoi, Streams, Builder
 ```
 
 ---
 
-## What Each File Contains
+## Top 10 (Study These First)
 
-Every file follows the same pattern (like Java_Interview):
-1. **Javadoc header** — what it is, why it's asked, companies, difficulty, complexity
-2. **Step-by-step comments** — how each method works internally
-3. **Runnable main()** — demo with output showing the implementation working
-4. **Follow-up questions** — what interviewers ask next (thread-safe, distributed, etc.)
-5. **Complexity analysis** — time and space for each operation
+| Rank | Implementation | Why |
+|------|---------------|-----|
+| 1 | LRU Cache | #1 most asked across all FAANG |
+| 2 | HashMap | Fundamentals — every interviewer expects this |
+| 3 | Rate Limiter | System design + coding crossover |
+| 4 | Trie | Autocomplete, spell check |
+| 5 | BlockingQueue | Foundation of producer-consumer |
+| 6 | Thread Pool | Concurrency fundamentals |
+| 7 | Min-Heap | Top-K, merge K lists, Dijkstra |
+| 8 | LFU Cache | Hard follow-up to LRU |
+| 9 | BST Iterator | Iterator pattern + tree traversal |
+| 10 | BST | Tree fundamentals, delete cases |
 
 ---
 
-## Remaining 28 Implementations (to be built)
+## Cheatsheets (Reference Docs)
 
-### Core Data Structures
-- LinkedList (Singly + Doubly)
-- ArrayList (Dynamic Array)
-- Stack (+ Min-Stack)
-- Queue using Stacks
-- Deque / Circular Buffer
-- Graph with BFS/DFS
+In addition to the 36 implementations, this repo includes two reference documents for quick interview revision:
 
-### Cache
-- TTL Cache (with Expiry)
-- Write-Through / Write-Back Cache
+### [CHEATSHEET.md](CHEATSHEET.md) — Patterns & Templates
 
-### Concurrency
-- ReadWriteLock
-- Producer-Consumer
-- CountDownLatch
-- Semaphore
+| Section | What's Covered |
+|---------|---------------|
+| Pattern Recognition | "I see X → I use Y" — 17 problem-to-pattern mappings |
+| Array & String | Prefix sum, Kadane's, Dutch National Flag |
+| Two Pointers | Opposite ends, same direction, Floyd's cycle |
+| Sliding Window | Fixed window, variable window, minimum window |
+| Binary Search | Standard, search on answer, first/last occurrence |
+| Stack | Monotonic stack, valid parentheses |
+| HashMap | Two Sum, frequency count, subarray sum = K |
+| Linked List | Reverse, find middle, merge sorted |
+| Trees | DFS (inorder/pre/post), height, validate BST, LCA, BFS, path sum |
+| Graphs | BFS shortest path, DFS islands, topological sort, Dijkstra |
+| Heap | Top K, merge K lists, running median (two heaps) |
+| DP | Fibonacci, knapsack, LCS, coin change, house robber, LIS |
+| Backtracking | Choose → explore → unchoose template |
+| Greedy | Interval scheduling, jump game |
+| Intervals | Merge, insert |
+| Bit Manipulation | Count bits, single number, power of 2 |
+| Complexity | Data structure + algorithm time/space table |
+| Java Snippets | Sort, PQ, HashMap, String, 2D array, TreeMap |
 
-### Design Components
-- Observable / Observer Pattern
-- Pub-Sub System
-- Connection Pool
-- Logger
-- Consistent Hashing Ring
-- Event Bus
-- CompletableFuture / Promise
+### [ALGORITHMS.md](ALGORITHMS.md) — Must-Know Algorithms
 
-### Classic Algorithms
-- MergeSort, QuickSort
-- StringBuilder
-- Custom Comparator
-- atoi (String to Integer)
-
-### Java-Specific
-- Custom Stream Operations (map, filter, reduce)
-- Immutable Class / Builder Pattern
+| Section | Algorithms |
+|---------|-----------|
+| Sorting | MergeSort, QuickSort, HeapSort, Counting Sort, Bucket Sort |
+| Searching | Binary Search (5 variants), Two Pointer, Exponential Search |
+| Graph | BFS, DFS, Dijkstra, Bellman-Ford, Floyd-Warshall, Topological Sort, Union-Find, Kruskal's, Prim's |
+| Tree | DFS traversals, Morris O(1) space, LCA, Serialize, AVL/RB |
+| String | KMP, Rabin-Karp, Longest Palindrome, Trie-based |
+| DP | 5-step framework + 10 must-know problems with recurrence table |
+| Greedy | When it works + 8 classic problems |
+| Math | GCD, Sieve of Eratosthenes, Fast Exponentiation, formulas |
+| Bit Manipulation | 10 operations + 6 classic problems |
+| Design | Consistent Hashing, Reservoir Sampling, Bloom Filter, Rate Limiting |
+| Quick Reference | "What problem → what algorithm" decision table |

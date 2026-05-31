@@ -1,7 +1,7 @@
 # DSA Interview Prep — Implement from Scratch
 
 ## What This Is
-"Build it yourself" interview questions — implement core data structures and system components without Java built-in libraries. Same format as Java_Interview: Maven, Java 21, self-contained main() methods.
+36 "build it yourself" interview questions — implement core data structures and system components without Java built-in libraries. Same format as Java_Interview: Maven, Java 21, self-contained main() methods.
 
 ## Tech Stack
 - Java 21, Maven 3.9+, --enable-preview
@@ -12,12 +12,13 @@ mvn compile
 java --enable-preview -cp target/classes dsa.cache.LRUCache
 ```
 
-## Structure
+## Structure (36 files)
 ```
-dsa/cache/           — LRU Cache, LFU Cache
-dsa/data_structures/ — HashMap, Trie, MinHeap, BST
-dsa/concurrency/     — BlockingQueue, ThreadPool, RateLimiter
-dsa/design/          — BST Iterator
+dsa/data_structures/ (10) — HashMap, LinkedList, ArrayList, Stack, Queue, Deque, Heap, Trie, BST, Graph
+dsa/cache/           (4)  — LRU, LFU, TTL, Write-Through/Back
+dsa/concurrency/     (7)  — ThreadPool, BlockingQueue, RWLock, RateLimiter, ProducerConsumer, Latch, Semaphore
+dsa/design/          (8)  — Iterator, Observer, PubSub, ConnPool, Logger, ConsistentHash, EventBus, Future
+dsa/algorithms/      (7)  — MergeSort, QuickSort, StringBuilder, Comparator, atoi, Streams, Builder
 ```
 
 ## Conventions
