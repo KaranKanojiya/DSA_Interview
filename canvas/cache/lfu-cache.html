@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-02 · LFU Cache — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Caches</a><span class="sep">›</span> LFU Cache</div>
+
+  <header class="hero">
+    <h1>LFU Cache — Implement from Scratch</h1>
+    <div class="sub">Least Frequently Used — evicts the item with the <b>lowest access count</b>. Tie-break: if two items have the same frequency, evict the <b>least recently used</b> one (LRU within same freq bucket). Uses <b>3 HashMaps + LinkedHashSet</b> for O(1) everything. LeetCode #460.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">LeetCode #460</span>
+      <span class="badge">Amazon · Google · Meta</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">get()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">put()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(capacity)</span></span>
+    </div>
+  </header>
+
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is LFU?</h3>
+            <p>A fixed-capacity cache that evicts the key with the <b>lowest frequency</b> (access count). If multiple keys share the minimum frequency, the <b>oldest one</b> (LRU) among them is evicted.</p>
+            <p class="muted">Every <code>get()</code> and <code>put(update)</code> increments that key's frequency.</p>
+          </div>
+          <div class="card">
+            <h3>LRU vs LFU</h3>
+            <table>
+              <thead><tr><th></th><th>LRU</th><th>LFU</th></tr></thead>
+              <tbody>
+                <tr><td>Evicts</td><td>Oldest access</td><td>Least accessed</td></tr>
+                <tr><td>Bias</td><td>Recency</td><td>Frequency</td></tr>
+                <tr><td>Structure</td><td>1 HashMap + 1 DLL</td><td>3 HashMaps</td></tr>
+                <tr><td>Difficulty</td><td>Medium</td><td style="color:var(--warn)">Hard</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Three-Map Architecture</h2></div>
+        <div class="flow">
+          <div class="step ds"><div class="box">keyToValue</div><small>Map&lt;K, V&gt;<br>value lookup</small></div>
+          <div class="step cache"><div class="box">keyToFreq</div><small>Map&lt;K, int&gt;<br>frequency tracker</small></div>
+          <div class="step conc"><div class="box">freqToKeys</div><small>Map&lt;int, LinkedHashSet&gt;<br>freq → ordered keys</small></div>
+        </div>
+        <div class="callout info" style="margin-top:12px"><b>LinkedHashSet</b> maintains insertion order, so the first element is the oldest (LRU tie-break). <code>iterator().next()</code> gives the eviction candidate in O(1).</div>
+        <div class="callout tip"><b>minFreq</b> — an integer tracking the current minimum frequency. Avoids scanning all frequency buckets on eviction. Updated on <code>increaseFreq()</code> and reset to 1 on every new insertion.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--accent)">get(key)</h3>
+            <ol class="tight">
+              <li>Look up in keyToValue → O(1)</li>
+              <li>Call <code>increaseFreq(key)</code></li>
+              <li>Return value</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">put(key, value)</h3>
+            <ol class="tight">
+              <li>If exists → update value + increaseFreq</li>
+              <li>If full → evict from <code>freqToKeys[minFreq]</code></li>
+              <li>Add to all 3 maps, freq=1</li>
+              <li>Set <code>minFreq = 1</code></li>
+            </ol>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3 style="color:var(--conc)">increaseFreq(key)</h3>
+          <ol class="tight">
+            <li>Get current freq, compute newFreq = freq + 1</li>
+            <li>Remove key from <code>freqToKeys[freq]</code></li>
+            <li>If that set is now empty AND freq == minFreq → <code>minFreq++</code></li>
+            <li>Add key to <code>freqToKeys[newFreq]</code></li>
+            <li>Update keyToFreq</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Interactive Simulator -->
+      <section id="lfu-sim">
+        <div class="sec-h"><span class="n">4</span><h2>Interactive Simulator</h2><span class="tag">try it</span></div>
+        <div class="sim">
+          <div class="sim-controls">
+            <label style="font-size:12px;color:var(--muted)">Capacity:</label>
+            <input id="lfu-cap" type="number" value="3" min="1" max="10" style="width:50px">
+            <label style="font-size:12px;color:var(--muted);margin-left:12px">Key:</label>
+            <input id="lfu-key" type="number" value="1" style="width:60px">
+            <label style="font-size:12px;color:var(--muted)">Value:</label>
+            <input id="lfu-val" type="number" value="10" style="width:60px">
+            <button class="btn primary" id="lfu-put">put()</button>
+            <button class="btn" id="lfu-get">get()</button>
+            <button class="btn" id="lfu-reset">Reset</button>
+          </div>
+          <div id="lfu-viz" style="min-height:60px"></div>
+          <div class="sim-log" id="lfu-log"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2></div>
+<pre class="code"><span class="kw">private final int</span> capacity;
+<span class="kw">private int</span> minFreq;
+
+<span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>, <span class="ty">Integer</span>&gt; keyToValue;         <span class="cm">// key → value</span>
+<span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>, <span class="ty">Integer</span>&gt; keyToFreq;          <span class="cm">// key → current frequency</span>
+<span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>, <span class="ty">LinkedHashSet</span>&lt;<span class="ty">Integer</span>&gt;&gt; freqToKeys;  <span class="cm">// freq → ordered keys (LRU)</span>
+
+<span class="kw">public</span> <span class="ty">LFUCache</span>(<span class="kw">int</span> capacity) {
+    <span class="kw">this</span>.capacity = capacity;
+    <span class="kw">this</span>.minFreq = <span class="num">0</span>;
+    <span class="kw">this</span>.keyToValue = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+    <span class="kw">this</span>.keyToFreq = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+    <span class="kw">this</span>.freqToKeys = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>get(key)</h2><span class="tag">O(1)</span></div>
+<pre class="code"><span class="kw">public int</span> get(<span class="kw">int</span> key) {
+    <span class="kw">if</span> (!keyToValue.containsKey(key)) <span class="kw">return</span> -<span class="num">1</span>;
+    increaseFreq(key);
+    <span class="kw">return</span> keyToValue.get(key);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>put(key, value)</h2><span class="tag">O(1)</span></div>
+<pre class="code"><span class="kw">public void</span> put(<span class="kw">int</span> key, <span class="kw">int</span> value) {
+    <span class="kw">if</span> (capacity == <span class="num">0</span>) <span class="kw">return</span>;
+
+    <span class="cm">// Case 1: Key exists → update value + increase frequency</span>
+    <span class="kw">if</span> (keyToValue.containsKey(key)) {
+        keyToValue.put(key, value);
+        increaseFreq(key);
+        <span class="kw">return</span>;
+    }
+
+    <span class="cm">// Case 2: Cache is full → evict the LFU key</span>
+    <span class="kw">if</span> (keyToValue.size() == capacity) {
+        evict();
+    }
+
+    <span class="cm">// Case 3: Add new key with freq=1</span>
+    keyToValue.put(key, value);
+    keyToFreq.put(key, <span class="num">1</span>);
+    freqToKeys.computeIfAbsent(<span class="num">1</span>, k -&gt; <span class="kw">new</span> <span class="ty">LinkedHashSet</span>&lt;&gt;()).add(key);
+    minFreq = <span class="num">1</span>;  <span class="cm">// new key always has freq=1</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>increaseFreq — the key helper</h2><span class="tag">O(1)</span></div>
+<pre class="code"><span class="kw">private void</span> increaseFreq(<span class="kw">int</span> key) {
+    <span class="kw">int</span> freq = keyToFreq.get(key);
+    <span class="kw">int</span> newFreq = freq + <span class="num">1</span>;
+
+    keyToFreq.put(key, newFreq);
+
+    <span class="cm">// Remove from old frequency bucket</span>
+    <span class="ty">LinkedHashSet</span>&lt;<span class="ty">Integer</span>&gt; oldSet = freqToKeys.get(freq);
+    oldSet.remove(key);
+
+    <span class="cm">// If old bucket is empty AND it was the minFreq → bump minFreq</span>
+    <span class="kw">if</span> (oldSet.isEmpty()) {
+        freqToKeys.remove(freq);
+        <span class="kw">if</span> (freq == minFreq) {
+            minFreq++;
+        }
+    }
+
+    <span class="cm">// Add to new frequency bucket</span>
+    freqToKeys.computeIfAbsent(newFreq, k -&gt; <span class="kw">new</span> <span class="ty">LinkedHashSet</span>&lt;&gt;()).add(key);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>evict — remove LFU (+ LRU tie-break)</h2><span class="tag">O(1)</span></div>
+<pre class="code"><span class="kw">private void</span> evict() {
+    <span class="ty">LinkedHashSet</span>&lt;<span class="ty">Integer</span>&gt; minFreqKeys = freqToKeys.get(minFreq);
+
+    <span class="cm">// First element of LinkedHashSet = OLDEST (LRU tie-break)</span>
+    <span class="kw">int</span> evictKey = minFreqKeys.iterator().next();
+
+    minFreqKeys.remove(evictKey);
+    <span class="kw">if</span> (minFreqKeys.isEmpty()) {
+        freqToKeys.remove(minFreq);
+    }
+    keyToValue.remove(evictKey);
+    keyToFreq.remove(evictKey);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.cache.LFUCache</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/cache/LFUCache.java</code> (174 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>get(key)</code></td><td class="o1">O(1)</td><td>HashMap lookups + LinkedHashSet remove/add</td></tr>
+            <tr><td><code>put(key, val)</code></td><td class="o1">O(1)</td><td>HashMap inserts + LinkedHashSet operations + optional evict</td></tr>
+            <tr><td>Space</td><td>O(capacity)</td><td>3 HashMaps, each with at most capacity entries</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Why LinkedHashSet and not ArrayList?</h3></div>
+            <div class="c-body">
+              <p><code>LinkedHashSet</code> gives O(1) <code>remove(key)</code> + O(1) <code>iterator().next()</code> + maintains insertion order. An <code>ArrayList</code> would make removal O(n). A plain <code>HashSet</code> doesn't maintain insertion order for LRU tie-breaking.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Why does minFreq++ work?</h3></div>
+            <div class="c-body">
+              <p>When the old freq bucket becomes empty and <code>freq == minFreq</code>, the key that was just accessed moved to <code>freq+1</code>. Since no other key can have a frequency between <code>freq</code> and <code>freq+1</code>, incrementing is always correct.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>LFU with aging / decay?</h3></div>
+            <div class="c-body">
+              <p>Pure LFU has a "frequency stagnation" problem — old popular items stay forever. Fix: halve all frequencies periodically ("aging") or use a time-weighted frequency like <code>freq * decay^(now - lastAccess)</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>When is LFU better than LRU?</h3></div>
+            <div class="c-body">
+              <p>LFU works better for workloads with stable popularity (CDN, DNS). LRU is better for temporal locality (recent items likely accessed again). Most real systems use LRU because it's simpler and handles bursty workloads better. Redis supports both.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>capacity == 0</b> — Must handle as a special case. Every put() is a no-op. Easy to forget and get a division-by-zero or NPE on the freq bucket.</div>
+        <div class="callout"><b>minFreq reset on insert</b> — After adding a new key, <code>minFreq</code> must be set to 1, not left at its old value. The new key has freq=1, which is always the new minimum.</div>
+        <div class="callout tip"><b>computeIfAbsent</b> — Use <code>freqToKeys.computeIfAbsent(freq, k -> new LinkedHashSet<>())</code> to avoid null checks when creating a new frequency bucket.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/cache/LFUCache.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

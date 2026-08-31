@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-03 · TTL Cache — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Caches</a><span class="sep">›</span> TTL Cache</div>
+
+  <header class="hero">
+    <h1>TTL Cache — Cache with Expiry</h1>
+    <div class="sub">Each entry has a <b>time-to-live</b>. After TTL expires, the entry is invalid. Uses <b>lazy expiration</b> on get() — no background scanner needed for the basic version. Generic <code>&lt;K, V&gt;</code> with per-key TTL overrides.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium-Hard</span>
+      <span class="badge">Amazon · Google · Microsoft</span>
+      <span class="badge">Generic &lt;K, V&gt;</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">get()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">put()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">cleanup()</span> <span class="val on">O(n)</span></span>
+    </div>
+  </header>
+
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a TTL Cache?</h3>
+            <p>A key-value store where each entry has an <b>absolute expiry time</b>. Reads check if the entry is still alive; expired entries are treated as cache misses.</p>
+            <p class="muted">Think Redis <code>SETEX</code> / <code>EXPIRE</code> — the same concept.</p>
+          </div>
+          <div class="card">
+            <h3>Two Expiration Strategies</h3>
+            <table>
+              <thead><tr><th></th><th>Lazy</th><th>Active</th></tr></thead>
+              <tbody>
+                <tr><td>When</td><td>On <code>get()</code></td><td>Background scan</td></tr>
+                <tr><td>Cost</td><td>O(1) per call</td><td>O(n) per sweep</td></tr>
+                <tr><td>Memory</td><td>Stale entries linger</td><td>Cleaned promptly</td></tr>
+                <tr><td>Used by</td><td colspan="2">Redis uses both: lazy + probabilistic sweep</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Data Structure</h2></div>
+        <div class="flow">
+          <div class="step ds"><div class="box">HashMap&lt;K, Entry&gt;</div><small>key → Entry<br>O(1) lookup</small></div>
+          <div class="step cache"><div class="box">Entry</div><small>value + expiryTime<br>(absolute millis)</small></div>
+          <div class="step conc"><div class="box">isExpired()</div><small>now &gt; expiryTime?<br>lazy check</small></div>
+        </div>
+
+        <div class="viz" style="margin-top:14px">
+          <svg width="640" height="140">
+            <defs><marker id="arr3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+            <!-- Timeline -->
+            <line x1="40" y1="60" x2="600" y2="60" stroke="#4b5563" stroke-width="2"/>
+            <text x="40" y="50" fill="#8b95a3" font-size="11">t=0 (put)</text>
+            <!-- TTL window -->
+            <rect x="40" y="70" width="300" height="25" rx="4" fill="rgba(74,222,128,.12)" stroke="#4ade80" stroke-width="1"/>
+            <text x="190" y="87" text-anchor="middle" fill="#4ade80" font-size="11">TTL window — entry is ALIVE</text>
+            <!-- Expired zone -->
+            <rect x="340" y="70" width="260" height="25" rx="4" fill="rgba(248,113,113,.08)" stroke="#f87171" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="470" y="87" text-anchor="middle" fill="#f87171" font-size="11">EXPIRED — get() returns null</text>
+            <!-- Expiry marker -->
+            <line x1="340" y1="55" x2="340" y2="100" stroke="#fbbf24" stroke-width="2"/>
+            <text x="340" y="120" text-anchor="middle" fill="#fbbf24" font-size="11">expiryTime</text>
+            <!-- get() calls -->
+            <circle cx="150" cy="60" r="5" fill="#4ade80"/>
+            <text x="150" y="42" text-anchor="middle" fill="#4ade80" font-size="10">get() = value</text>
+            <circle cx="450" cy="60" r="5" fill="#f87171"/>
+            <text x="450" y="42" text-anchor="middle" fill="#f87171" font-size="10">get() = null</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations</h2></div>
+        <div class="grid g3">
+          <div class="card">
+            <h3 style="color:var(--cache)">put(key, val)</h3>
+            <ol class="tight">
+              <li>Compute <code>expiryTime = now + ttlMs</code></li>
+              <li>Store <code>Entry(value, expiryTime)</code> in HashMap</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--accent)">get(key)</h3>
+            <ol class="tight">
+              <li>Look up Entry in HashMap</li>
+              <li>If null → return null</li>
+              <li>If <code>isExpired()</code> → remove + return null</li>
+              <li>Else → return value</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--warn)">cleanup()</h3>
+            <ol class="tight">
+              <li>Iterate all entries</li>
+              <li>Remove expired ones</li>
+              <li>O(n) — for periodic use</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Entry — stores value + expiry</h2><span class="tag">inner class</span></div>
+<pre class="code"><span class="kw">private static class</span> <span class="ty">Entry</span>&lt;<span class="ty">V</span>&gt; {
+    <span class="ty">V</span> value;
+    <span class="kw">long</span> expiryTime; <span class="cm">// absolute time when entry expires</span>
+
+    <span class="ty">Entry</span>(<span class="ty">V</span> value, <span class="kw">long</span> expiryTime) {
+        <span class="kw">this</span>.value = value;
+        <span class="kw">this</span>.expiryTime = expiryTime;
+    }
+    <span class="kw">boolean</span> isExpired() {
+        <span class="kw">return</span> <span class="ty">System</span>.currentTimeMillis() &gt; expiryTime;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Fields &amp; Constructor</h2></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">K</span>, <span class="ty">Entry</span>&lt;<span class="ty">V</span>&gt;&gt; map = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+<span class="kw">private final long</span> defaultTtlMs;
+
+<span class="kw">public</span> <span class="ty">TTLCache</span>(<span class="kw">long</span> defaultTtlMs) {
+    <span class="kw">this</span>.defaultTtlMs = defaultTtlMs;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>put() — with optional per-key TTL</h2></div>
+<pre class="code"><span class="kw">public void</span> put(<span class="ty">K</span> key, <span class="ty">V</span> value) {
+    put(key, value, defaultTtlMs);
+}
+
+<span class="kw">public void</span> put(<span class="ty">K</span> key, <span class="ty">V</span> value, <span class="kw">long</span> ttlMs) {
+    map.put(key, <span class="kw">new</span> <span class="ty">Entry</span>&lt;&gt;(value, <span class="ty">System</span>.currentTimeMillis() + ttlMs));
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>get() — lazy expiration</h2></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">V</span> get(<span class="ty">K</span> key) {
+    <span class="ty">Entry</span>&lt;<span class="ty">V</span>&gt; entry = map.get(key);
+    <span class="kw">if</span> (entry == <span class="kw">null</span>) <span class="kw">return null</span>;
+    <span class="kw">if</span> (entry.isExpired()) {
+        map.remove(key);  <span class="cm">// lazy expiration</span>
+        <span class="kw">return null</span>;
+    }
+    <span class="kw">return</span> entry.value;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Helpers — containsKey, size, cleanup</h2></div>
+<pre class="code"><span class="kw">public boolean</span> containsKey(<span class="ty">K</span> key) { <span class="kw">return</span> get(key) != <span class="kw">null</span>; }
+
+<span class="kw">public int</span> size() { cleanup(); <span class="kw">return</span> map.size(); }
+
+<span class="cm">// Active cleanup — remove all expired entries</span>
+<span class="kw">private void</span> cleanup() {
+    map.entrySet().removeIf(e -&gt; e.getValue().isExpired());
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.cache.TTLCache</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/cache/TTLCache.java</code> (70 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>get(key)</code></td><td class="o1">O(1)</td><td>HashMap lookup + timestamp compare</td></tr>
+            <tr><td><code>put(key, val)</code></td><td class="o1">O(1)</td><td>HashMap insert</td></tr>
+            <tr><td><code>size()</code></td><td class="on">O(n)</td><td>Calls cleanup() which scans all entries</td></tr>
+            <tr><td><code>cleanup()</code></td><td class="on">O(n)</td><td>Iterates entire map to remove expired</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>How does Redis handle expiry?</h3></div>
+            <div class="c-body">
+              <p><b>Both lazy + active.</b> Lazy: check on every read. Active: probabilistic — every 100ms, sample 20 random keys, delete expired ones. If > 25% were expired, repeat immediately. This keeps expired key % below ~25% without full scans.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>TTL + LRU combined?</h3></div>
+            <div class="c-body">
+              <p>Store <code>expiryTime</code> in each LRU Node. On <code>get()</code>, first check if expired (treat as miss + evict). On <code>put()</code>, set expiry. Combine this file's TTL logic with the LRU Cache's linked list structure.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Efficient cleanup with a priority queue?</h3></div>
+            <div class="c-body">
+              <p>Use a <code>PriorityQueue&lt;Entry&gt;</code> ordered by <code>expiryTime</code>. On cleanup, keep polling while <code>peek().isExpired()</code>. This avoids scanning non-expired entries — only process the ones that are actually due. Cost: O(k log n) where k = number expired.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Thread-safe TTL cache?</h3></div>
+            <div class="c-body">
+              <p>Use <code>ConcurrentHashMap</code> for the map + a <code>ScheduledExecutorService</code> for periodic cleanup. Or use <code>Caffeine</code> / <code>Guava Cache</code> in production — they handle TTL, LRU, and concurrency out of the box.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Clock skew</b> — <code>System.currentTimeMillis()</code> can jump backward (NTP sync). For short TTLs, use <code>System.nanoTime()</code> which is monotonic. For distributed systems, use logical clocks.</div>
+        <div class="callout"><b>Memory leak with lazy-only</b> — If keys are written but never read again, expired entries accumulate. Must have periodic cleanup for production use.</div>
+        <div class="callout tip"><b>Per-key TTL</b> — The overloaded <code>put(key, value, ttlMs)</code> allows different TTLs per entry. This is how Redis <code>SETEX</code> works — global default + per-key override.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/cache/TTLCache.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

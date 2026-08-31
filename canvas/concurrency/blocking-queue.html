@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blocking Queue — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Concurrency</a><span class="sep">›</span> Blocking Queue</div>
+
+  <header class="hero">
+    <h1>Blocking Queue — Implement from Scratch</h1>
+    <div class="sub">Thread-safe bounded queue. <code>put()</code> blocks when full, <code>take()</code> blocks when empty. Uses <b>ReentrantLock + TWO Conditions</b> (notFull, notEmpty) for targeted signaling. Foundation of the producer-consumer pattern.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">LeetCode #1188</span>
+      <span class="badge">Amazon · Google · Microsoft · Apple</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">put()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">take()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(capacity)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Blocking Queue?</h3>
+            <p>A <b>bounded, thread-safe queue</b> where:</p>
+            <ul class="tight">
+              <li><code>put(item)</code> blocks the caller when the queue is <b>full</b> — waits until space is available</li>
+              <li><code>take()</code> blocks the caller when the queue is <b>empty</b> — waits until an item is available</li>
+            </ul>
+            <p class="muted">This blocking behavior is what makes the producer-consumer pattern work without busy-waiting.</p>
+          </div>
+          <div class="card">
+            <h3>Why TWO Conditions (not one)?</h3>
+            <ul class="tight">
+              <li><b>One condition + notifyAll()</b> → wakes ALL threads (producers AND consumers) — wasteful</li>
+              <li><b>Two conditions</b> → <code>notFull.signal()</code> wakes only a producer, <code>notEmpty.signal()</code> wakes only a consumer</li>
+              <li>Targeted signaling = fewer wasted context switches</li>
+            </ul>
+            <p class="muted"><code>ReentrantLock</code> supports multiple <code>Condition</code> objects; <code>synchronized</code> only has one wait set.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Producer-Consumer Flow</h2></div>
+        <div class="viz">
+          <svg width="820" height="260" viewBox="0 0 820 260">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-v" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/></marker>
+            </defs>
+            <!-- Producer -->
+            <rect x="10" y="40" width="100" height="50" rx="8" style="fill:rgba(74,222,128,.08);stroke:#4ade80;stroke-width:1.5"/>
+            <text x="60" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#4ade80">Producer</text>
+            <text x="60" y="78" text-anchor="middle" font-size="10" fill="#b8c1cc">put(item)</text>
+            <!-- Arrow P → Lock1 -->
+            <line x1="110" y1="65" x2="148" y2="65" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr-v)"/>
+            <!-- Lock box 1 (producer side) -->
+            <rect x="155" y="25" width="120" height="80" rx="8" style="fill:rgba(167,139,250,.08);stroke:#a78bfa;stroke-width:1.5"/>
+            <text x="215" y="46" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">lock.lock()</text>
+            <text x="215" y="64" text-anchor="middle" font-size="10" fill="#b8c1cc">while (full)</text>
+            <text x="215" y="80" text-anchor="middle" font-size="10" fill="#fbbf24">notFull.await()</text>
+            <text x="215" y="96" text-anchor="middle" font-size="9" fill="#8b95a3">release lock + wait</text>
+            <!-- Arrow Lock1 → Queue -->
+            <line x1="275" y1="65" x2="323" y2="65" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr-v)"/>
+            <!-- Queue (center) -->
+            <rect x="330" y="15" width="140" height="105" rx="8" style="fill:rgba(167,139,250,.1);stroke:#a78bfa;stroke-width:2"/>
+            <text x="400" y="35" text-anchor="middle" font-size="12" font-weight="600" fill="#a78bfa">Bounded Queue</text>
+            <rect x="348" y="44" width="104" height="20" rx="4" class="node-box"/><text x="400" y="58" text-anchor="middle" font-size="10" fill="#b8c1cc">item 3</text>
+            <rect x="348" y="68" width="104" height="20" rx="4" class="node-box"/><text x="400" y="82" text-anchor="middle" font-size="10" fill="#b8c1cc">item 2</text>
+            <rect x="348" y="92" width="104" height="20" rx="4" class="node-hl"/><text x="400" y="106" text-anchor="middle" font-size="10" fill="#2dd4bf">item 1</text>
+            <!-- Arrow Queue → Lock2 -->
+            <line x1="470" y1="65" x2="518" y2="65" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr-v)"/>
+            <!-- Lock box 2 (consumer side) -->
+            <rect x="525" y="25" width="120" height="80" rx="8" style="fill:rgba(167,139,250,.08);stroke:#a78bfa;stroke-width:1.5"/>
+            <text x="585" y="46" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">lock.lock()</text>
+            <text x="585" y="64" text-anchor="middle" font-size="10" fill="#b8c1cc">while (empty)</text>
+            <text x="585" y="80" text-anchor="middle" font-size="10" fill="#fbbf24">notEmpty.await()</text>
+            <text x="585" y="96" text-anchor="middle" font-size="9" fill="#8b95a3">release lock + wait</text>
+            <!-- Arrow Lock2 → Consumer -->
+            <line x1="645" y1="65" x2="698" y2="65" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr)"/>
+            <!-- Consumer -->
+            <rect x="705" y="40" width="100" height="50" rx="8" style="fill:rgba(248,113,113,.08);stroke:#f87171;stroke-width:1.5"/>
+            <text x="755" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#f87171">Consumer</text>
+            <text x="755" y="78" text-anchor="middle" font-size="10" fill="#b8c1cc">take()</text>
+            <!-- Signal: notFull (consumer → producer) -->
+            <path d="M 585 105 C 585 165, 215 165, 215 105" stroke="#4ade80" stroke-width="1.5" fill="none" stroke-dasharray="5 3"/>
+            <text x="400" y="155" text-anchor="middle" font-size="11" font-weight="500" fill="#4ade80">notFull.signal()</text>
+            <text x="400" y="172" text-anchor="middle" font-size="9" fill="#8b95a3">consumer tells producer: "space available"</text>
+            <!-- Signal: notEmpty (producer → consumer) -->
+            <path d="M 215 105 C 215 220, 585 220, 585 105" stroke="#2dd4bf" stroke-width="1.5" fill="none" stroke-dasharray="5 3"/>
+            <text x="400" y="215" text-anchor="middle" font-size="11" font-weight="500" fill="#2dd4bf">notEmpty.signal()</text>
+            <text x="400" y="232" text-anchor="middle" font-size="9" fill="#8b95a3">producer tells consumer: "item available"</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>ReentrantLock vs synchronized</h2></div>
+        <table>
+          <thead><tr><th>Feature</th><th>synchronized</th><th>ReentrantLock</th></tr></thead>
+          <tbody>
+            <tr><td>Wait sets</td><td><b>One</b> — all threads in same pool</td><td><b>Multiple</b> — separate Condition objects</td></tr>
+            <tr><td>Fairness</td><td>No guarantee</td><td>Optional fair mode</td></tr>
+            <tr><td>Try lock</td><td>Not possible</td><td><code>tryLock(timeout)</code></td></tr>
+            <tr><td>Interruptible</td><td>No</td><td><code>lockInterruptibly()</code></td></tr>
+            <tr><td>Unlock</td><td>Automatic (block exit)</td><td>Manual — <b>must</b> use <code>finally</code></td></tr>
+          </tbody>
+        </table>
+        <div class="callout info"><b>Key insight:</b> <code>synchronized</code> only has ONE wait set. You can't separately wake producers vs consumers. That's why <code>ReentrantLock</code> + two <code>Condition</code> objects is the standard approach for BlockingQueue.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Spurious Wakeups — WHILE not IF</h2></div>
+        <div class="grid g2">
+          <div class="card" style="border-color:var(--warn)">
+            <h3 style="color:var(--warn)">Wrong: IF</h3>
+<pre class="code"><span class="kw">if</span> (queue.size() == capacity)
+    notFull.await();
+<span class="cm">// ⚠️ might wake up without signal</span>
+<span class="cm">// queue could STILL be full!</span></pre>
+          </div>
+          <div class="card" style="border-color:var(--ok)">
+            <h3 style="color:var(--ok)">Correct: WHILE</h3>
+<pre class="code"><span class="kw">while</span> (queue.size() == capacity)
+    notFull.await();
+<span class="cm">// ✓ re-checks condition after wakeup</span>
+<span class="cm">// loops back if still full</span></pre>
+          </div>
+        </div>
+        <div class="callout tip"><b>Spurious wakeup:</b> OS/JVM can wake a thread from <code>await()</code> without any <code>signal()</code> call. The WHILE loop re-checks the condition, making the code correct regardless. This is a Java specification requirement.</div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">setup</span></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Queue</span>&lt;<span class="ty">E</span>&gt; queue;
+<span class="kw">private final int</span> capacity;
+
+<span class="cm">// ReentrantLock — explicit lock (more flexible than synchronized)</span>
+<span class="kw">private final</span> <span class="ty">ReentrantLock</span> lock = <span class="kw">new</span> <span class="ty">ReentrantLock</span>();
+
+<span class="cm">// Two conditions for targeted signaling:</span>
+<span class="kw">private final</span> <span class="ty">Condition</span> notFull  = lock.newCondition();  <span class="cm">// producers wait here</span>
+<span class="kw">private final</span> <span class="ty">Condition</span> notEmpty = lock.newCondition();  <span class="cm">// consumers wait here</span>
+
+<span class="kw">public</span> <span class="ty">MyBlockingQueue</span>(<span class="kw">int</span> capacity) {
+    <span class="kw">this</span>.capacity = capacity;
+    <span class="kw">this</span>.queue = <span class="kw">new</span> <span class="ty">LinkedList</span>&lt;&gt;();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>put(item) — Blocks if Full</h2><span class="tag">producer</span></div>
+        <p class="muted">Called by producer threads. Acquires lock, waits in a WHILE loop if queue is full, adds item, signals one consumer.</p>
+<pre class="code"><span class="kw">public void</span> put(<span class="ty">E</span> item) <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    lock.lock();
+    <span class="kw">try</span> {
+        <span class="cm">// WHILE loop — guard against spurious wakeups</span>
+        <span class="kw">while</span> (queue.size() == capacity) {
+            notFull.await();  <span class="cm">// release lock + wait → re-acquire when signaled</span>
+        }
+
+        queue.add(item);
+
+        <span class="cm">// Signal ONE waiting consumer: "there's an item for you"</span>
+        notEmpty.signal();
+    } <span class="kw">finally</span> {
+        lock.unlock();  <span class="cm">// ALWAYS unlock in finally — even if exception thrown</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>take() — Blocks if Empty</h2><span class="tag">consumer</span></div>
+        <p class="muted">Called by consumer threads. Acquires lock, waits if queue is empty, removes item, signals one producer.</p>
+<pre class="code"><span class="kw">public</span> <span class="ty">E</span> take() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    lock.lock();
+    <span class="kw">try</span> {
+        <span class="cm">// Wait while empty</span>
+        <span class="kw">while</span> (queue.isEmpty()) {
+            notEmpty.await();  <span class="cm">// release lock + wait → re-acquire when signaled</span>
+        }
+
+        <span class="ty">E</span> item = queue.poll();
+
+        <span class="cm">// Signal ONE waiting producer: "there's space for you"</span>
+        notFull.signal();
+
+        <span class="kw">return</span> item;
+    } <span class="kw">finally</span> {
+        lock.unlock();
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>size()</h2><span class="tag">thread-safe read</span></div>
+<pre class="code"><span class="kw">public int</span> size() {
+    lock.lock();
+    <span class="kw">try</span> { <span class="kw">return</span> queue.size(); }
+    <span class="kw">finally</span> { lock.unlock(); }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.concurrency.MyBlockingQueue</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/concurrency/MyBlockingQueue.java</code> (154 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>put(item)</code></td><td class="o1">O(1)</td><td>LinkedList.add() is constant time (excluding wait time)</td></tr>
+            <tr><td><code>take()</code></td><td class="o1">O(1)</td><td>LinkedList.poll() is constant time (excluding wait time)</td></tr>
+            <tr><td><code>size()</code></td><td class="o1">O(1)</td><td>LinkedList tracks size internally</td></tr>
+            <tr><td>Space</td><td>O(capacity)</td><td>Bounded by constructor parameter</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Priority blocking queue?</h3></div>
+            <div class="c-body">
+              <p>Replace <code>LinkedList</code> with a <b>min-heap</b> (PriorityQueue). <code>put()</code> does heap-insert O(log n), <code>take()</code> does heap-extract O(log n). Still uses the same Lock + two Conditions pattern. Java's <code>PriorityBlockingQueue</code> is unbounded — it never blocks on put.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Multiple producers / consumers?</h3></div>
+            <div class="c-body">
+              <p>Works correctly as-is. The <code>ReentrantLock</code> ensures mutual exclusion. <code>signal()</code> wakes exactly one waiting thread. With many producers, <code>notFull.signal()</code> wakes one producer — others stay asleep. No thundering herd problem.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Backpressure strategy?</h3></div>
+            <div class="c-body">
+              <p>Blocking on <code>put()</code> IS backpressure — producer slows down naturally. Alternatives: <code>offer(item, timeout)</code> returns false instead of blocking forever, letting the producer decide (drop, retry, log). In reactive systems, use flow control signals.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>ArrayBlockingQueue vs LinkedBlockingQueue?</h3></div>
+            <div class="c-body">
+              <p><b>Array</b>: fixed-size circular buffer, single lock, better cache locality, pre-allocated memory. <b>Linked</b>: optionally unbounded, two separate locks (put/take can proceed simultaneously), higher memory overhead from node objects. Array is usually better for bounded queues.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Spurious wakeup</b> — Using <code>if</code> instead of <code>while</code> before <code>await()</code> is the #1 bug. The JVM spec says threads CAN wake without a signal. Always re-check the condition in a loop.</div>
+        <div class="callout"><b>Interrupt during await()</b> — <code>await()</code> throws <code>InterruptedException</code>. The lock is automatically re-acquired before the exception propagates. Propagate the interrupt properly (re-throw or set interrupt flag).</div>
+        <div class="callout"><b>Always unlock in finally</b> — If <code>lock.unlock()</code> is not in a <code>finally</code> block, any exception between <code>lock()</code> and <code>unlock()</code> causes a permanent deadlock. Every other thread waiting for this lock will hang forever.</div>
+        <div class="callout tip"><b>signal() vs signalAll()</b> — <code>signal()</code> wakes ONE thread (efficient). <code>signalAll()</code> wakes ALL (safe but wasteful). Use <code>signal()</code> when you know exactly one thread can proceed — which is the case here since we add/remove one item at a time.</div>
+        <div class="callout info"><b>Why not synchronized?</b> — <code>synchronized</code> blocks have only ONE implicit wait set. You can't separate producer waits from consumer waits. <code>notifyAll()</code> wakes everyone — producers AND consumers — even though only one type can proceed.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/concurrency/MyBlockingQueue.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

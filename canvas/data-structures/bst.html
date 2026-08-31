@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-08 · BST — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> Binary Search Tree</div>
+
+  <header class="hero">
+    <h1>Binary Search Tree — Implement from Scratch</h1>
+    <div class="sub"><b>left &lt; node &lt; right</b>. Insert, search, and delete all run in O(log n) average. Delete has 3 cases: leaf node, one child, and two children (replace with <b>in-order successor</b>). The fundamental ordered data structure — basis for AVL trees, Red-Black trees, and TreeMap.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Amazon · Microsoft · Apple · Google</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">insert()</span> <span class="val ologn">O(log n)</span></span>
+      <span class="cx"><span class="label">search()</span> <span class="val ologn">O(log n)</span></span>
+      <span class="cx"><span class="label">delete()</span> <span class="val ologn">O(log n)</span></span>
+      <span class="cx"><span class="label">inorder()</span> <span class="val on">O(n)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>BST Property</h3>
+            <p>For every node:<br><b>All left descendants &lt; node &lt; all right descendants</b></p>
+            <p>This invariant enables binary search: at each node, you eliminate half the remaining candidates. Average case gives O(log n) for insert, search, and delete.</p>
+            <p class="muted">In-order traversal (left → node → right) yields elements in <b>sorted order</b>.</p>
+          </div>
+          <div class="card">
+            <h3>Why BST?</h3>
+            <ul class="tight">
+              <li><b>Sorted order</b> — in-order traversal gives sorted output</li>
+              <li><b>Dynamic</b> — unlike sorted array, insert/delete are efficient</li>
+              <li><b>Range queries</b> — find all elements in [lo, hi] efficiently</li>
+              <li><b>Predecessor / successor</b> — O(log n) finding next/prev element</li>
+            </ul>
+            <p class="muted">Caveat: without balancing, worst case is O(n) (degenerate tree = linked list)</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>BST Diagram — [8, 3, 10, 1, 6, 14, 4, 7, 13]</h2></div>
+        <div class="viz">
+          <svg width="520" height="260" viewBox="0 0 520 260">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+
+            <!-- Level 0: 8 (root) -->
+            <rect x="235" y="10" width="50" height="32" rx="6" class="node-hl"/>
+            <text x="260" y="31" text-anchor="middle" font-size="14" font-weight="600" fill="#2dd4bf">8</text>
+
+            <!-- Level 1: 3 and 10 -->
+            <line x1="245" y1="42" x2="140" y2="62" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="275" y1="42" x2="380" y2="62" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="115" y="64" width="50" height="32" rx="6" class="node-box"/>
+            <text x="140" y="85" text-anchor="middle" font-size="14" fill="#e6edf3">3</text>
+            <rect x="355" y="64" width="50" height="32" rx="6" class="node-box"/>
+            <text x="380" y="85" text-anchor="middle" font-size="14" fill="#e6edf3">10</text>
+
+            <!-- Level 2: 1, 6, 14 -->
+            <line x1="125" y1="96" x2="70" y2="118" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="155" y1="96" x2="210" y2="118" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="395" y1="96" x2="445" y2="118" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="45" y="120" width="50" height="32" rx="6" class="node-box"/>
+            <text x="70" y="141" text-anchor="middle" font-size="14" fill="#e6edf3">1</text>
+            <rect x="185" y="120" width="50" height="32" rx="6" class="node-box"/>
+            <text x="210" y="141" text-anchor="middle" font-size="14" fill="#e6edf3">6</text>
+            <rect x="420" y="120" width="50" height="32" rx="6" class="node-box"/>
+            <text x="445" y="141" text-anchor="middle" font-size="14" fill="#e6edf3">14</text>
+
+            <!-- Level 3: 4, 7, 13 -->
+            <line x1="198" y1="152" x2="150" y2="172" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="222" y1="152" x2="268" y2="172" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="432" y1="152" x2="398" y2="172" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="125" y="174" width="50" height="32" rx="6" class="node-box"/>
+            <text x="150" y="195" text-anchor="middle" font-size="14" fill="#e6edf3">4</text>
+            <rect x="245" y="174" width="50" height="32" rx="6" class="node-box"/>
+            <text x="270" y="195" text-anchor="middle" font-size="14" fill="#e6edf3">7</text>
+            <rect x="375" y="174" width="50" height="32" rx="6" class="node-box"/>
+            <text x="400" y="195" text-anchor="middle" font-size="14" fill="#e6edf3">13</text>
+
+            <!-- In-order label -->
+            <text x="260" y="240" text-anchor="middle" font-size="11" fill="#4ade80">In-order: 1 → 3 → 4 → 6 → 7 → 8 → 10 → 13 → 14 (sorted!)</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Delete — 3 Cases</h2></div>
+        <div class="grid g3">
+          <div class="card">
+            <h3 style="color:var(--ok)">Case 1: Leaf</h3>
+            <p>Node has <b>no children</b>. Simply remove it — set parent's pointer to null.</p>
+            <p class="muted">Example: delete 4 → just remove it from 6's left</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">Case 2: One Child</h3>
+            <p>Node has <b>one child</b>. Replace the node with its child — the child takes the node's spot.</p>
+            <p class="muted">Example: delete 10 → replace with 14 (its only child subtree)</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--warn)">Case 3: Two Children</h3>
+            <p>Find the <b>in-order successor</b> (smallest node in right subtree). Copy its value to the target node, then delete the successor (which has at most one child).</p>
+            <p class="muted">Example: delete 3 → successor is 4, copy 4 into 3's spot, delete old 4 (leaf)</p>
+          </div>
+        </div>
+        <div class="callout info"><b>Why in-order successor?</b> It's the smallest value greater than the deleted node — swapping it in preserves the BST property. You could also use the in-order predecessor (largest in left subtree).</div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>TreeNode</h2><span class="tag">inner class</span></div>
+<pre class="code"><span class="kw">private static class</span> <span class="ty">TreeNode</span> {
+    <span class="kw">int</span> val;
+    <span class="ty">TreeNode</span> left, right;
+
+    <span class="ty">TreeNode</span>(<span class="kw">int</span> val) {
+        <span class="kw">this</span>.val = val;
+    }
+}
+
+<span class="kw">private</span> <span class="ty">TreeNode</span> root;</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>insert — Recursive</h2><span class="tag">O(log n) avg</span></div>
+<pre class="code"><span class="kw">public void</span> insert(<span class="kw">int</span> val) {
+    root = insertRec(root, val);
+}
+
+<span class="kw">private</span> <span class="ty">TreeNode</span> insertRec(<span class="ty">TreeNode</span> node, <span class="kw">int</span> val) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return new</span> <span class="ty">TreeNode</span>(val);
+
+    <span class="kw">if</span> (val &lt; node.val) {
+        node.left = insertRec(node.left, val);    <span class="cm">// go left</span>
+    } <span class="kw">else if</span> (val &gt; node.val) {
+        node.right = insertRec(node.right, val);   <span class="cm">// go right</span>
+    }
+    <span class="cm">// val == node.val → duplicate, skip (or handle as desired)</span>
+    <span class="kw">return</span> node;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>search — Recursive</h2><span class="tag">O(log n) avg</span></div>
+<pre class="code"><span class="kw">public boolean</span> search(<span class="kw">int</span> val) {
+    <span class="kw">return</span> searchRec(root, val);
+}
+
+<span class="kw">private boolean</span> searchRec(<span class="ty">TreeNode</span> node, <span class="kw">int</span> val) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return false</span>;
+    <span class="kw">if</span> (val == node.val) <span class="kw">return true</span>;
+    <span class="kw">return</span> val &lt; node.val
+        ? searchRec(node.left, val)
+        : searchRec(node.right, val);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>delete — 3 Cases with In-order Successor</h2><span class="tag">O(log n) avg</span></div>
+<pre class="code"><span class="kw">public void</span> delete(<span class="kw">int</span> val) {
+    root = deleteRec(root, val);
+}
+
+<span class="kw">private</span> <span class="ty">TreeNode</span> deleteRec(<span class="ty">TreeNode</span> node, <span class="kw">int</span> val) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return null</span>;
+
+    <span class="kw">if</span> (val &lt; node.val) {
+        node.left = deleteRec(node.left, val);
+    } <span class="kw">else if</span> (val &gt; node.val) {
+        node.right = deleteRec(node.right, val);
+    } <span class="kw">else</span> {
+        <span class="cm">// FOUND the node to delete</span>
+
+        <span class="cm">// Case 1 &amp; 2: leaf or one child</span>
+        <span class="kw">if</span> (node.left == <span class="kw">null</span>) <span class="kw">return</span> node.right;
+        <span class="kw">if</span> (node.right == <span class="kw">null</span>) <span class="kw">return</span> node.left;
+
+        <span class="cm">// Case 3: two children → in-order successor</span>
+        <span class="ty">TreeNode</span> successor = findMin(node.right);
+        node.val = successor.val;  <span class="cm">// copy successor's value</span>
+        node.right = deleteRec(node.right, successor.val);  <span class="cm">// delete successor</span>
+    }
+    <span class="kw">return</span> node;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>findMin &amp; inorder</h2><span class="tag">helpers</span></div>
+        <div class="grid g2">
+          <div>
+<pre class="code"><span class="cm">// Smallest node in a subtree = leftmost</span>
+<span class="kw">private</span> <span class="ty">TreeNode</span> findMin(<span class="ty">TreeNode</span> node) {
+    <span class="kw">while</span> (node.left != <span class="kw">null</span>) {
+        node = node.left;
+    }
+    <span class="kw">return</span> node;
+}</pre>
+          </div>
+          <div>
+<pre class="code"><span class="cm">// In-order: left → root → right = sorted</span>
+<span class="kw">public void</span> inorder() {
+    inorderRec(root);
+}
+
+<span class="kw">private void</span> inorderRec(<span class="ty">TreeNode</span> node) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return</span>;
+    inorderRec(node.left);
+    <span class="ty">System</span>.out.print(node.val + <span class="st">" "</span>);
+    inorderRec(node.right);
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>isValidBST</h2><span class="tag">verification</span></div>
+<pre class="code"><span class="kw">public boolean</span> isValidBST() {
+    <span class="kw">return</span> validate(root, <span class="ty">Long</span>.MIN_VALUE, <span class="ty">Long</span>.MAX_VALUE);
+}
+
+<span class="kw">private boolean</span> validate(<span class="ty">TreeNode</span> node, <span class="kw">long</span> min, <span class="kw">long</span> max) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return true</span>;
+    <span class="kw">if</span> (node.val &lt;= min || node.val &gt;= max) <span class="kw">return false</span>;
+    <span class="kw">return</span> validate(node.left, min, node.val)
+        &amp;&amp; validate(node.right, node.val, max);
+}</pre>
+        <div class="callout tip"><b>Use long for bounds</b> — Using <code>Integer.MIN_VALUE / MAX_VALUE</code> fails when the tree contains those values. Use <code>Long.MIN_VALUE / Long.MAX_VALUE</code> or <code>null</code> with null checks.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">7</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.BinarySearchTree</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/BinarySearchTree.java</code></p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>insert()</code></td><td><span style="color:var(--cache);font-weight:600">O(log n)</span></td><td class="on">O(n)</td><td>Balanced: halve each level. Degenerate: one long chain</td></tr>
+            <tr><td><code>search()</code></td><td><span style="color:var(--cache);font-weight:600">O(log n)</span></td><td class="on">O(n)</td><td>Same reasoning — path from root to target</td></tr>
+            <tr><td><code>delete()</code></td><td><span style="color:var(--cache);font-weight:600">O(log n)</span></td><td class="on">O(n)</td><td>Find node + find successor + relink</td></tr>
+            <tr><td><code>inorder()</code></td><td><span style="color:var(--warn);font-weight:600">O(n)</span></td><td class="on">O(n)</td><td>Must visit every node</td></tr>
+            <tr><td>Space</td><td>O(n)</td><td>O(n)</td><td>One node per element + recursion stack O(h)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>AVL / Red-Black Trees for balance?</h3></div>
+            <div class="c-body">
+              <p><b>AVL:</b> height difference between left and right subtrees ≤ 1. Rotations (left, right, left-right, right-left) after insert/delete to rebalance. Guarantees O(log n) height. Better for read-heavy workloads (stricter balance).</p>
+              <p><b>Red-Black:</b> nodes are red or black with 5 properties ensuring no path is more than 2× longer than any other. Less strict than AVL → fewer rotations on insert/delete. Used by Java's TreeMap and TreeSet.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Kth Smallest Element (LC #230)?</h3></div>
+            <div class="c-body">
+              <p>In-order traversal stops at the Kth element. Use a counter that decrements at each visit. When counter hits 0, you've found the Kth smallest. O(H + K) time. For repeated queries, augment each node with a <code>leftCount</code> field for O(log n) lookups.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Lowest Common Ancestor (LC #235)?</h3></div>
+            <div class="c-body">
+              <p>In a BST: if both values are less than the current node → go left. If both are greater → go right. Otherwise, the current node is the LCA (the split point). O(log n) for balanced BST. Much simpler than the general binary tree LCA which needs parent pointers or recursion.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Serialize / Deserialize BST (LC #449)?</h3></div>
+            <div class="c-body">
+              <p>Serialize: preorder traversal → comma-separated string. Deserialize: use the BST property with upper/lower bounds. For each value, if it fits within [min, max], create a node and recursively build left (max = val) and right (min = val). O(n) time, no null markers needed (unlike general binary tree).</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Degenerate tree → O(n)</b> — Inserting sorted data (1, 2, 3, 4, 5) creates a linked list. All operations become O(n). This is why self-balancing trees (AVL, Red-Black) exist. Always mention this trade-off in interviews.</div>
+        <div class="callout"><b>Duplicate handling</b> — Pure BST has no duplicates (left &lt; node &lt; right). If you need duplicates: store a count per node, allow left ≤ node &lt; right, or use a separate data structure. Clarify with the interviewer.</div>
+        <div class="callout tip"><b>Deleting the root</b> — Works the same as any node deletion. The trick is returning the new root from the recursive call. The caller pattern <code>root = deleteRec(root, val)</code> handles root changes automatically.</div>
+        <div class="callout info"><b>isValidBST common mistake</b> — Checking only <code>left.val &lt; node.val &lt; right.val</code> is wrong. You must check that ALL left descendants are less, not just the immediate child. Pass min/max bounds down the recursion.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/BinarySearchTree.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

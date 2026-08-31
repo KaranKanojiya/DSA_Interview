@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC-05 · Producer-Consumer — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Concurrency</a><span class="sep">›</span> Producer-Consumer</div>
+
+  <header class="hero">
+    <h1>Producer-Consumer Pattern — Implement from Scratch</h1>
+    <div class="sub">Classic bounded-buffer concurrency pattern. Producer waits when buffer is full, consumer waits when buffer is empty. Uses <b>synchronized + wait/notifyAll</b> — a simpler alternative to Lock/Condition. The foundational concurrency pattern behind Kafka, thread pools, and every message queue.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Amazon · Microsoft · Google</span>
+      <span class="badge">~60 lines</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">produce()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">consume()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(capacity)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is Producer-Consumer?</h3>
+            <p>A concurrency pattern where <b>producer</b> threads generate work items and place them into a shared <b>bounded buffer</b>, while <b>consumer</b> threads take items out and process them.</p>
+            <p class="muted">The buffer decouples production speed from consumption speed — classic <b>backpressure</b>.</p>
+          </div>
+          <div class="card">
+            <h3>Why bounded buffer?</h3>
+            <ul class="tight">
+              <li><b>Backpressure</b> — producers slow down when buffer is full, preventing OOM</li>
+              <li><b>Decoupling</b> — producers and consumers run at independent rates</li>
+              <li><b>Thread safety</b> — all access via synchronized + wait/notifyAll</li>
+              <li>Foundation for <b>BlockingQueue</b>, thread pools, and message brokers</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Producer-Consumer Flow</h2></div>
+        <div class="flow">
+          <div class="step conc"><div class="box">Producer</div><small>generates items<br>waits if buffer full</small></div>
+          <div class="step conc"><div class="box">Bounded Buffer</div><small>Queue + capacity<br>synchronized access</small></div>
+          <div class="step conc"><div class="box">Consumer</div><small>takes items<br>waits if buffer empty</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg width="720" height="200">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/></marker>
+              <marker id="arr-g" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+              <marker id="arr-r" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#f87171"/></marker>
+            </defs>
+            <!-- Producer -->
+            <rect x="20" y="60" width="120" height="50" rx="10" fill="rgba(167,139,250,.15)" stroke="#a78bfa" stroke-width="2"/>
+            <text x="80" y="82" text-anchor="middle" font-size="13" font-weight="600" fill="#a78bfa">Producer</text>
+            <text x="80" y="98" text-anchor="middle" font-size="10" fill="#b8c1cc">Thread</text>
+            <!-- Arrow: Producer → Buffer -->
+            <line x1="140" y1="85" x2="230" y2="85" stroke="#a78bfa" stroke-width="2" marker-end="url(#arr)"/>
+            <text x="185" y="78" text-anchor="middle" font-size="10" fill="#a78bfa">produce()</text>
+            <!-- Buffer -->
+            <rect x="235" y="40" width="250" height="90" rx="10" fill="rgba(167,139,250,.08)" stroke="#a78bfa" stroke-width="2"/>
+            <text x="360" y="62" text-anchor="middle" font-size="13" font-weight="600" fill="#a78bfa">Bounded Buffer</text>
+            <!-- Queue slots -->
+            <rect x="260" y="75" width="45" height="35" rx="5" fill="rgba(45,212,191,.15)" stroke="#2dd4bf" stroke-width="1.5"/>
+            <text x="282" y="97" text-anchor="middle" font-size="11" fill="#2dd4bf">item</text>
+            <rect x="315" y="75" width="45" height="35" rx="5" fill="rgba(45,212,191,.15)" stroke="#2dd4bf" stroke-width="1.5"/>
+            <text x="337" y="97" text-anchor="middle" font-size="11" fill="#2dd4bf">item</text>
+            <rect x="370" y="75" width="45" height="35" rx="5" fill="rgba(74,222,128,.06)" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="392" y="97" text-anchor="middle" font-size="10" fill="#8b95a3">empty</text>
+            <rect x="425" y="75" width="45" height="35" rx="5" fill="rgba(74,222,128,.06)" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="447" y="97" text-anchor="middle" font-size="10" fill="#8b95a3">empty</text>
+            <!-- Arrow: Buffer → Consumer -->
+            <line x1="485" y1="85" x2="575" y2="85" stroke="#a78bfa" stroke-width="2" marker-end="url(#arr)"/>
+            <text x="530" y="78" text-anchor="middle" font-size="10" fill="#a78bfa">consume()</text>
+            <!-- Consumer -->
+            <rect x="580" y="60" width="120" height="50" rx="10" fill="rgba(167,139,250,.15)" stroke="#a78bfa" stroke-width="2"/>
+            <text x="640" y="82" text-anchor="middle" font-size="13" font-weight="600" fill="#a78bfa">Consumer</text>
+            <text x="640" y="98" text-anchor="middle" font-size="10" fill="#b8c1cc">Thread</text>
+            <!-- Wait labels -->
+            <text x="80" y="140" text-anchor="middle" font-size="10" fill="#f87171">wait() if full</text>
+            <line x1="80" y1="130" x2="80" y2="115" stroke="#f87171" stroke-width="1" stroke-dasharray="3 2"/>
+            <text x="640" y="140" text-anchor="middle" font-size="10" fill="#f87171">wait() if empty</text>
+            <line x1="640" y1="130" x2="640" y2="115" stroke="#f87171" stroke-width="1" stroke-dasharray="3 2"/>
+            <!-- notifyAll labels -->
+            <text x="360" y="158" text-anchor="middle" font-size="10" fill="#4ade80">notifyAll() wakes waiting threads</text>
+            <text x="360" y="175" text-anchor="middle" font-size="10" fill="#b8c1cc">capacity = 4 | size = 2</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>wait/notifyAll vs Lock/Condition</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--conc)">synchronized + wait/notifyAll</h3>
+            <ul class="tight">
+              <li>Simpler — built into every Java object</li>
+              <li>Single condition: all waiters share one wait-set</li>
+              <li>Must use <code>notifyAll()</code> to avoid lost wakeups</li>
+              <li>Good for simple producer-consumer</li>
+            </ul>
+            <p class="muted">This is what our implementation uses.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--algo)">Lock + Condition</h3>
+            <ul class="tight">
+              <li>More flexible — multiple Conditions per Lock</li>
+              <li>Separate <code>notFull</code> and <code>notEmpty</code> conditions</li>
+              <li>Can use <code>signal()</code> instead of <code>signalAll()</code></li>
+              <li>Better for complex coordination</li>
+            </ul>
+            <p class="muted">Used in <code>MyBlockingQueue</code> in this repo.</p>
+          </div>
+        </div>
+        <div class="callout info"><b>Why while-loop, not if?</b> Spurious wakeups can occur — the thread may be woken without the condition actually changing. The <code>while</code> loop rechecks the condition after every wakeup, making the code safe from spurious wakeups and race conditions.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Real-World Examples</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Kafka / Message Queues</h3>
+            <p class="muted">Producers write messages to topic partitions (bounded by retention/memory). Consumers poll messages. Backpressure via broker-side buffering.</p>
+          </div>
+          <div class="card">
+            <h3>Thread Pools</h3>
+            <p class="muted"><code>ThreadPoolExecutor</code> uses a BlockingQueue internally. Submitted tasks are "produced" into the queue; worker threads "consume" them. Bounded queue = backpressure.</p>
+          </div>
+          <div class="card">
+            <h3>Logging Frameworks</h3>
+            <p class="muted">Log4j2 AsyncAppender: application threads produce log events, background thread consumes and writes to disk. Bounded ring buffer prevents OOM.</p>
+          </div>
+          <div class="card">
+            <h3>Pipeline Processing</h3>
+            <p class="muted">ETL pipelines where Stage 1 produces records, Stage 2 transforms, Stage 3 loads. Each stage is a consumer of the previous and producer for the next.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>BoundedBuffer — Inner Class</h2><span class="tag">core structure</span></div>
+        <p class="muted">A generic bounded buffer backed by a <code>Queue</code> with a fixed capacity. All operations are <code>synchronized</code> on the buffer instance.</p>
+<pre class="code"><span class="kw">static class</span> <span class="ty">BoundedBuffer</span>&lt;<span class="ty">E</span>&gt; {
+    <span class="kw">private final</span> <span class="ty">Queue</span>&lt;<span class="ty">E</span>&gt; queue = <span class="kw">new</span> <span class="ty">LinkedList</span>&lt;&gt;();
+    <span class="kw">private final int</span> capacity;
+
+    <span class="ty">BoundedBuffer</span>(<span class="kw">int</span> capacity) { <span class="kw">this</span>.capacity = capacity; }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>produce() — Add Item</h2><span class="tag">blocks when full</span></div>
+        <p class="muted">If the buffer is at capacity, the producer thread releases the monitor and <b>waits</b>. Once space is available, it adds the item and wakes all waiting threads.</p>
+<pre class="code"><span class="kw">synchronized void</span> produce(<span class="ty">E</span> item) <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="cm">// Guard: block while buffer is full</span>
+    <span class="kw">while</span> (queue.size() == capacity) {
+        wait();             <span class="cm">// release lock, sleep until notified</span>
+    }
+    queue.add(item);        <span class="cm">// enqueue the item</span>
+    <span class="ty">System</span>.out.println(<span class="st">"  Produced: "</span> + item + <span class="st">" | size="</span> + queue.size());
+    notifyAll();            <span class="cm">// wake consumers (and other producers)</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>consume() — Take Item</h2><span class="tag">blocks when empty</span></div>
+        <p class="muted">Mirror of produce: consumer waits while empty, then polls and wakes all threads so a blocked producer can proceed.</p>
+<pre class="code"><span class="kw">synchronized</span> <span class="ty">E</span> consume() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="cm">// Guard: block while buffer is empty</span>
+    <span class="kw">while</span> (queue.isEmpty()) {
+        wait();             <span class="cm">// release lock, sleep until notified</span>
+    }
+    <span class="ty">E</span> item = queue.poll();  <span class="cm">// dequeue the item</span>
+    <span class="ty">System</span>.out.println(<span class="st">"  Consumed: "</span> + item + <span class="st">" | size="</span> + queue.size());
+    notifyAll();            <span class="cm">// wake producers (and other consumers)</span>
+    <span class="kw">return</span> item;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>main() — Demo with 2 Threads</h2><span class="tag">demo</span></div>
+        <p class="muted">Producer generates items faster (50ms sleep) than consumer processes them (150ms sleep), showing the buffer filling up and producer eventually blocking.</p>
+<pre class="code"><span class="kw">public static void</span> main(<span class="ty">String</span>[] args) <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="ty">BoundedBuffer</span>&lt;<span class="ty">Integer</span>&gt; buffer = <span class="kw">new</span> <span class="ty">BoundedBuffer</span>&lt;&gt;(<span class="num">3</span>);
+
+    <span class="ty">Thread</span> producer = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+        <span class="kw">try</span> {
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">1</span>; i &lt;= <span class="num">6</span>; i++) {
+                buffer.produce(i);
+                <span class="ty">Thread</span>.sleep(<span class="num">50</span>);
+            }
+        } <span class="kw">catch</span> (<span class="ty">InterruptedException</span> e) {
+            <span class="ty">Thread</span>.currentThread().interrupt();
+        }
+    });
+
+    <span class="ty">Thread</span> consumer = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+        <span class="kw">try</span> {
+            <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">6</span>; i++) {
+                buffer.consume();
+                <span class="ty">Thread</span>.sleep(<span class="num">150</span>);
+            }
+        } <span class="kw">catch</span> (<span class="ty">InterruptedException</span> e) {
+            <span class="ty">Thread</span>.currentThread().interrupt();
+        }
+    });
+
+    producer.start(); consumer.start();
+    producer.join(); consumer.join();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.concurrency.ProducerConsumer</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/concurrency/ProducerConsumer.java</code> (60 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>produce()</code></td><td class="o1">O(1)</td><td>Queue add is O(1); wait time excluded from algorithmic complexity</td></tr>
+            <tr><td><code>consume()</code></td><td class="o1">O(1)</td><td>Queue poll is O(1); wait time excluded from algorithmic complexity</td></tr>
+            <tr><td>Space</td><td>O(capacity)</td><td>Bounded buffer holds at most <code>capacity</code> items</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Multiple producers &amp; consumers?</h3></div>
+            <div class="c-body">
+              <p>Works as-is because <code>synchronized</code> + <code>while</code>-loop guards are thread-safe for any number of threads. Each call to <code>notifyAll()</code> wakes all waiters; the <code>while</code> loop ensures only one proceeds when the condition is met. For better throughput, consider separate locks for produce/consume (like <code>ReentrantLock</code> with two <code>Condition</code>s).</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Poison pill shutdown?</h3></div>
+            <div class="c-body">
+              <p>Producer sends a special sentinel value (e.g., <code>null</code> or <code>Integer.MIN_VALUE</code>) to signal consumers to stop. Each consumer, upon receiving the poison pill, re-inserts it (so other consumers also see it) and exits its loop. Cleaner than <code>Thread.interrupt()</code> for graceful shutdown.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Priority queue variant?</h3></div>
+            <div class="c-body">
+              <p>Replace <code>LinkedList</code> with a <code>PriorityQueue</code> (min-heap). Produce still O(log n) due to heap insertion. Consumer gets the highest-priority item. Useful for task schedulers where urgent tasks should be processed first.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Compare to BlockingQueue?</h3></div>
+            <div class="c-body">
+              <p>Java's <code>ArrayBlockingQueue</code> uses <code>ReentrantLock</code> with separate <code>notFull</code>/<code>notEmpty</code> conditions — more efficient because <code>signal()</code> targets only the right waiter type. Our <code>notifyAll()</code> wakes everyone including irrelevant threads. This repo's <code>MyBlockingQueue</code> shows the Lock/Condition version.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>notify vs notifyAll</b> — Using <code>notify()</code> instead of <code>notifyAll()</code> can cause <b>lost wakeups</b>. If a producer notifies and the woken thread is another producer (not a consumer), the consumer never wakes. Always use <code>notifyAll()</code> when multiple thread types share one monitor.</div>
+        <div class="callout"><b>Single producer, many consumers</b> — Works correctly, but consumers compete. Only one consumer holds the lock at a time. If buffer frequently empty, most consumers spend time waiting — consider multiple buffers or work-stealing.</div>
+        <div class="callout tip"><b>Buffer size = 1</b> — Degenerates into strict alternation: produce → consume → produce → consume. Essentially a synchronous handoff (like <code>SynchronousQueue</code>). Minimal buffering, maximum coupling.</div>
+        <div class="callout info"><b>while vs if</b> — Using <code>if</code> instead of <code>while</code> before <code>wait()</code> is a classic bug. Spurious wakeups or multiple consumers waking simultaneously can lead to consuming from an empty queue or producing into a full one.</div>
+      </section>
+
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/concurrency/ProducerConsumer.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

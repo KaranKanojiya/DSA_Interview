@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-01 · BST Iterator — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> BST Iterator</div>
+
+  <header class="hero">
+    <h1>BST Iterator — Implement from Scratch</h1>
+    <div class="sub">Stack-based in-order traversal of a Binary Search Tree. <code>pushAllLeft()</code> queues the leftmost path; <code>next()</code> pops and processes the right subtree. Each node is pushed and popped exactly once across all calls, yielding <b>O(1) amortized</b> per operation. LeetCode #173.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">LeetCode #173</span>
+      <span class="badge">Google · Meta · Amazon · Apple</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">next()</span> <span class="val o1">O(1) avg</span></span>
+      <span class="cx"><span class="label">hasNext()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val ologn">O(h)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a BST Iterator?</h3>
+            <p>An iterator that yields BST elements in <b>sorted (in-order)</b> order — smallest to largest — without flattening the entire tree into a list upfront.</p>
+            <p class="muted"><code>next()</code> returns the next smallest, <code>hasNext()</code> checks if more exist.</p>
+          </div>
+          <div class="card">
+            <h3>Why stack-based?</h3>
+            <ul class="tight">
+              <li><b>O(h) space</b> instead of O(n) for a full flatten</li>
+              <li>Stack simulates the call stack of recursive in-order traversal</li>
+              <li>Lazy evaluation — only processes nodes as needed</li>
+              <li>Interviewers want to see you avoid <code>List&lt;Integer&gt;</code> pre-sort</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>How It Works — pushAllLeft + Stack</h2></div>
+        <div class="flow">
+          <div class="step design"><div class="box">Constructor</div><small>pushAllLeft(root)<br>queues leftmost path</small></div>
+          <div class="step design"><div class="box">next()</div><small>pop top (smallest)<br>pushAllLeft(right)</small></div>
+          <div class="step design"><div class="box">hasNext()</div><small>stack.isEmpty()?<br>O(1) check</small></div>
+          <div class="step" style="flex:0.6"><div class="box" style="border-color:var(--ok);color:var(--ok)">Sorted Output</div><small>yields values<br>in ascending order</small></div>
+        </div>
+
+        <div class="viz" style="margin-top:14px">
+          <svg viewBox="0 0 780 310" width="780" height="310">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-hl" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+            </defs>
+
+            <!-- Title -->
+            <text x="200" y="18" font-size="12" font-weight="bold" fill="#fb7185">BST Structure</text>
+            <text x="600" y="18" font-size="12" font-weight="bold" fill="#fb7185">Stack State</text>
+
+            <!-- BST: Node 7 (root) -->
+            <rect x="155" y="35" width="90" height="40" rx="6" class="node-hl"/>
+            <text x="200" y="60" text-anchor="middle" font-size="11" font-weight="600" fill="#2dd4bf">7</text>
+
+            <!-- BST: Node 3 -->
+            <line x1="175" y1="75" x2="110" y2="105" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="55" y="105" width="90" height="40" rx="6" class="node-box"/>
+            <text x="100" y="130" text-anchor="middle" font-size="11" fill="#e6edf3">3</text>
+
+            <!-- BST: Node 15 -->
+            <line x1="225" y1="75" x2="300" y2="105" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="255" y="105" width="90" height="40" rx="6" class="node-box"/>
+            <text x="300" y="130" text-anchor="middle" font-size="11" fill="#e6edf3">15</text>
+
+            <!-- BST: Node 9 -->
+            <line x1="280" y1="145" x2="230" y2="175" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="175" y="175" width="90" height="40" rx="6" class="node-box"/>
+            <text x="220" y="200" text-anchor="middle" font-size="11" fill="#e6edf3">9</text>
+
+            <!-- BST: Node 20 -->
+            <line x1="320" y1="145" x2="370" y2="175" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="325" y="175" width="90" height="40" rx="6" class="node-box"/>
+            <text x="370" y="200" text-anchor="middle" font-size="11" fill="#e6edf3">20</text>
+
+            <!-- In-order label -->
+            <text x="200" y="245" text-anchor="middle" font-size="10" fill="#4ade80">In-order: 3 → 7 → 9 → 15 → 20</text>
+
+            <!-- Separator -->
+            <line x1="450" y1="30" x2="450" y2="250" stroke="#4b5563" stroke-width="1" stroke-dasharray="4 3"/>
+
+            <!-- Stack after constructor: pushAllLeft(7) → push 7, push 3 -->
+            <text x="600" y="48" text-anchor="middle" font-size="10" fill="#b8c1cc">After constructor: pushAllLeft(root)</text>
+
+            <!-- Stack frame -->
+            <rect x="540" y="60" width="120" height="40" rx="6" class="node-hl"/>
+            <text x="600" y="82" text-anchor="middle" font-size="11" font-weight="600" fill="#2dd4bf">3  ← top</text>
+            <text x="600" y="94" text-anchor="middle" font-size="9" fill="#4ade80">next smallest</text>
+
+            <rect x="540" y="108" width="120" height="40" rx="6" class="node-box"/>
+            <text x="600" y="133" text-anchor="middle" font-size="11" fill="#e6edf3">7</text>
+
+            <!-- Arrow label -->
+            <text x="600" y="170" text-anchor="middle" font-size="10" fill="#b8c1cc">After next() → returns 3</text>
+            <text x="600" y="183" text-anchor="middle" font-size="10" fill="#b8c1cc">pop 3, no right child</text>
+
+            <!-- Stack after first next() -->
+            <rect x="540" y="195" width="120" height="40" rx="6" class="node-hl"/>
+            <text x="600" y="217" text-anchor="middle" font-size="11" font-weight="600" fill="#2dd4bf">7  ← top</text>
+            <text x="600" y="229" text-anchor="middle" font-size="9" fill="#4ade80">next smallest</text>
+
+            <!-- Next call description -->
+            <text x="600" y="258" text-anchor="middle" font-size="10" fill="#fbbf24">next() → pop 7 → pushAllLeft(15)</text>
+            <text x="600" y="271" text-anchor="middle" font-size="10" fill="#fbbf24">stack: [9, 15]</text>
+
+            <!-- Arrows from BST to stack -->
+            <path d="M100 145 Q 100 165 200 165 Q 470 165 530 80" stroke="#fb7185" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#arr-hl)"/>
+            <text x="330" y="160" text-anchor="middle" font-size="9" fill="#fb7185">pushAllLeft path</text>
+          </svg>
+        </div>
+
+        <div class="callout tip" style="margin-top:12px"><b>Key insight:</b> The stack always holds the path from the root to the current "next smallest" node — only left edges. Each node is pushed once and popped once across all calls, so the <b>total work is O(n)</b> spread over n calls = <b>O(1) amortized</b>.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--design)">pushAllLeft(node)</h3>
+            <ol class="tight">
+              <li>While node is not null:</li>
+              <li>Push node onto stack</li>
+              <li>Move to node.left</li>
+            </ol>
+            <p class="muted">Queues the leftmost path — guarantees stack top is always the next smallest.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--accent)">next()</h3>
+            <ol class="tight">
+              <li>Pop top of stack → this is the next smallest</li>
+              <li>If popped node has a right child → <code>pushAllLeft(right)</code></li>
+              <li>Return popped node's value</li>
+            </ol>
+            <p class="muted">Processing the right subtree ensures in-order continues correctly.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Walkthrough — All 5 Calls</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 780 200" width="780" height="200">
+            <defs>
+              <marker id="arr2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+
+            <text x="15" y="18" font-size="11" font-weight="bold" fill="#fb7185">Step-by-step next() calls on BST [3, 7, 9, 15, 20]</text>
+
+            <!-- Step 1 -->
+            <rect x="15" y="35" width="130" height="40" rx="6" class="node-hl"/>
+            <text x="80" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">next() → 3</text>
+            <text x="80" y="65" text-anchor="middle" font-size="9" fill="#b8c1cc">stack: [7]</text>
+            <line x1="145" y1="55" x2="175" y2="55" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+            <!-- Step 2 -->
+            <rect x="180" y="35" width="130" height="40" rx="6" class="node-hl"/>
+            <text x="245" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">next() → 7</text>
+            <text x="245" y="65" text-anchor="middle" font-size="9" fill="#b8c1cc">stack: [9, 15]</text>
+            <line x1="310" y1="55" x2="340" y2="55" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+            <!-- Step 3 -->
+            <rect x="345" y="35" width="130" height="40" rx="6" class="node-hl"/>
+            <text x="410" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">next() → 9</text>
+            <text x="410" y="65" text-anchor="middle" font-size="9" fill="#b8c1cc">stack: [15]</text>
+            <line x1="475" y1="55" x2="505" y2="55" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+            <!-- Step 4 -->
+            <rect x="510" y="35" width="130" height="40" rx="6" class="node-hl"/>
+            <text x="575" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">next() → 15</text>
+            <text x="575" y="65" text-anchor="middle" font-size="9" fill="#b8c1cc">stack: [20]</text>
+            <line x1="640" y1="55" x2="670" y2="55" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+            <!-- Step 5 -->
+            <rect x="15" y="100" width="130" height="40" rx="6" class="node-hl"/>
+            <text x="80" y="117" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">next() → 20</text>
+            <text x="80" y="130" text-anchor="middle" font-size="9" fill="#b8c1cc">stack: []</text>
+
+            <!-- hasNext false -->
+            <rect x="180" y="100" width="130" height="40" rx="6" class="node-box"/>
+            <text x="245" y="117" text-anchor="middle" font-size="10" fill="#f87171">hasNext() → false</text>
+            <text x="245" y="130" text-anchor="middle" font-size="9" fill="#b8c1cc">stack empty</text>
+
+            <!-- Legend -->
+            <text x="15" y="175" font-size="10" fill="#b8c1cc">Each node pushed &amp; popped exactly once → total O(n) work over n calls = O(1) amortized per call</text>
+            <text x="15" y="190" font-size="10" fill="#fbbf24">Stack never exceeds h nodes (tree height) → O(h) space</text>
+          </svg>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>TreeNode — BST Node</h2><span class="tag">inner class</span></div>
+        <p class="muted">Standard BST node with value, left, and right pointers.</p>
+<pre class="code"><span class="kw">static class</span> <span class="ty">TreeNode</span> {
+    <span class="kw">int</span> val;
+    <span class="ty">TreeNode</span> left, right;
+
+    <span class="ty">TreeNode</span>(<span class="kw">int</span> val) { <span class="kw">this</span>.val = val; }
+
+    <span class="ty">TreeNode</span>(<span class="kw">int</span> val, <span class="ty">TreeNode</span> left, <span class="ty">TreeNode</span> right) {
+        <span class="kw">this</span>.val = val;
+        <span class="kw">this</span>.left = left;
+        <span class="kw">this</span>.right = right;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Fields &amp; Constructor</h2><span class="tag">iterator setup</span></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Deque</span>&lt;<span class="ty">TreeNode</span>&gt; stack;
+
+<span class="kw">public</span> <span class="ty">BSTIterator</span>(<span class="ty">TreeNode</span> root) {
+    stack = <span class="kw">new</span> <span class="ty">ArrayDeque</span>&lt;&gt;();
+    pushAllLeft(root);  <span class="cm">// queue up the leftmost path</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>pushAllLeft(node) — Queue Leftmost Path</h2><span class="tag">helper</span></div>
+        <p class="muted">Pushes node and all its left children onto the stack. After this, the stack top is the smallest node in that subtree.</p>
+<pre class="code"><span class="kw">private void</span> pushAllLeft(<span class="ty">TreeNode</span> node) {
+    <span class="kw">while</span> (node != <span class="kw">null</span>) {
+        stack.push(node);
+        node = node.left;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>next() — O(1) Amortized</h2><span class="tag">return next smallest</span></div>
+<pre class="code"><span class="kw">public int</span> next() {
+    <span class="kw">if</span> (!hasNext()) <span class="kw">throw new</span> <span class="ty">NoSuchElementException</span>(<span class="st">"No more elements"</span>);
+
+    <span class="cm">// Pop the top — this is the next smallest</span>
+    <span class="ty">TreeNode</span> current = stack.pop();
+
+    <span class="cm">// If it has a right subtree, push all left children</span>
+    <span class="cm">// This ensures the NEXT call returns the correct value</span>
+    <span class="kw">if</span> (current.right != <span class="kw">null</span>) {
+        pushAllLeft(current.right);
+    }
+
+    <span class="kw">return</span> current.val;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>hasNext() — O(1)</h2><span class="tag">check remaining</span></div>
+<pre class="code"><span class="kw">public boolean</span> hasNext() {
+    <span class="kw">return</span> !stack.isEmpty();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.BSTIterator</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/BSTIterator.java</code> (144 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>next()</code></td><td class="o1">O(1) avg</td><td>Each node pushed &amp; popped exactly once across all calls — total O(n) / n = O(1)</td></tr>
+            <tr><td><code>hasNext()</code></td><td class="o1">O(1)</td><td>Stack empty check</td></tr>
+            <tr><td>Space</td><td><span style="color:var(--cache)">O(h)</span></td><td>Stack holds at most h nodes (tree height) — leftmost path</td></tr>
+          </tbody>
+        </table>
+        <div class="callout info" style="margin-top:10px"><b>O(1) amortized explained:</b> Worst-case single call can be O(h) (when pushAllLeft traverses a full path). But across <b>all n calls</b>, each of the n nodes is pushed once and popped once = O(2n) total = O(1) per call amortized.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Flatten BST to sorted list?</h3></div>
+            <div class="c-body">
+              <p>Simply call <code>next()</code> in a loop and collect all values. Or do a full recursive in-order traversal. The iterator approach is <b>lazy</b> — better when you only need the first few elements.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Merge 2 BST iterators?</h3></div>
+            <div class="c-body">
+              <p>Create two <code>BSTIterator</code> instances. Merge like merging two sorted lists: compare <code>peek()</code> from each, advance the smaller. Total time O(n + m), space O(h1 + h2).</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Implement peek()?</h3></div>
+            <div class="c-body">
+              <p>Just return <code>stack.peek().val</code> without popping. O(1) since the stack top is always the next smallest. Could also cache the next value in a field.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>General tree iterator (not BST)?</h3></div>
+            <div class="c-body">
+              <p>For a generic tree, choose your traversal order (pre/in/post/level). Level-order uses a <b>Queue</b> instead of a Stack. For n-ary trees, push children in reverse order for pre-order. The pattern is the same: use an explicit data structure to simulate recursion.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Right-skewed tree</b> — If the BST is a straight right chain (degenerate), the constructor pushes only the root. Each <code>next()</code> call pushes one node. Stack never exceeds 1 element — space is O(1) in this case.</div>
+        <div class="callout"><b>Left-skewed tree</b> — Constructor pushes all n nodes. The first <code>next()</code> call is O(1), but the constructor itself is O(n). Stack size = O(n) = O(h) since h = n for a skewed tree.</div>
+        <div class="callout tip"><b>Deque vs Stack</b> — Java's <code>Stack</code> class is synchronized (legacy). Use <code>ArrayDeque</code> as a stack for better performance. Push/pop from the same end.</div>
+        <div class="callout"><b>NoSuchElementException</b> — Always check <code>hasNext()</code> before <code>next()</code>. Production iterators should throw a clear exception, not return a sentinel value.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/BSTIterator.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>
