@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSA Interview — Study Canvases</title>
+<link rel="stylesheet" href="assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>DSA Interview — Build It from Scratch</h1>
+    <div class="sub">36 interactive study canvases covering core data structures, caches, concurrency, design patterns, and algorithms. Each canvas has 3 tabs: <b>Concept</b> (what &amp; why), <b>Implementation</b> (annotated code from the repo), and <b>Interview</b> (follow-ups, edge cases, complexity). Open in a browser or Cursor Live Preview.</div>
+    <div class="badges">
+      <span class="badge lvl">36 topics · 5 categories</span>
+      <span class="badge">Java 21 · Maven</span>
+      <span class="badge">interactive simulators</span>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--ds)"></i> Data Structures (10)</span>
+      <span><i class="dot" style="background:var(--cache)"></i> Caches (4)</span>
+      <span><i class="dot" style="background:var(--conc)"></i> Concurrency (7)</span>
+      <span><i class="dot" style="background:var(--design)"></i> Design (8)</span>
+      <span><i class="dot" style="background:var(--algo)"></i> Algorithms (7)</span>
+    </div>
+  </header>
+
+  <!-- ======== DATA STRUCTURES ======== -->
+  <div class="lvlband ds">Data Structures — 10 topics · <b>all ready</b></div>
+  <div class="hub">
+    <a class="tile" href="data-structures/hashmap.html"><div class="num">DS-01 · ready</div><div class="tt">HashMap</div><div class="dd">Array of buckets + separate chaining, hash function, resize at load factor 0.75. O(1) amortized get/put.</div></a>
+    <a class="tile" href="data-structures/linked-list.html"><div class="num">DS-02 · ready</div><div class="tt">LinkedList</div><div class="dd">Doubly linked list with addFirst, addLast, remove, reverse. O(1) head/tail ops.</div></a>
+    <a class="tile" href="data-structures/array-list.html"><div class="num">DS-03 · ready</div><div class="tt">ArrayList</div><div class="dd">Dynamic array with 1.5x growth factor. Amortized O(1) add, O(1) get.</div></a>
+    <a class="tile" href="data-structures/stack.html"><div class="num">DS-04 · ready</div><div class="tt">Stack + Min-Stack</div><div class="dd">LIFO + getMin() in O(1) using parallel min tracking. LeetCode #155.</div></a>
+    <a class="tile" href="data-structures/queue-using-stacks.html"><div class="num">DS-05 · ready</div><div class="tt">Queue (Two Stacks)</div><div class="dd">Two stacks trick: pushStack + popStack. Transfer reverses order. Amortized O(1).</div></a>
+    <a class="tile" href="data-structures/circular-deque.html"><div class="num">DS-06 · ready</div><div class="tt">Circular Deque</div><div class="dd">Fixed-size circular buffer with modular arithmetic. All ops O(1). LeetCode #641.</div></a>
+    <a class="tile" href="data-structures/min-heap.html"><div class="num">DS-07 · ready</div><div class="tt">Min Heap</div><div class="dd">Binary heap as array. siftUp for insert, siftDown for extractMin. O(log n).</div></a>
+    <a class="tile" href="data-structures/trie.html"><div class="num">DS-08 · ready</div><div class="tt">Trie</div><div class="dd">Prefix tree with children[26]. insert/search/startsWith O(m). LeetCode #208.</div></a>
+    <a class="tile" href="data-structures/bst.html"><div class="num">DS-09 · ready</div><div class="tt">Binary Search Tree</div><div class="dd">BST with insert, delete (3 cases), in-order traversal, isValidBST.</div></a>
+    <a class="tile" href="data-structures/graph.html"><div class="num">DS-10 · ready</div><div class="tt">Graph</div><div class="dd">Adjacency list with BFS (Queue) and DFS (recursion). O(V+E).</div></a>
+  </div>
+
+  <!-- ======== CACHES ======== -->
+  <div class="lvlband cache">Caches — 4 topics · <b>all ready</b></div>
+  <div class="hub">
+    <a class="tile" href="cache/lru-cache.html"><div class="num">C-01 · ready</div><div class="tt">LRU Cache</div><div class="dd">HashMap + Doubly Linked List. O(1) get/put. Interactive simulator with live linked-list visualization. LeetCode #146.</div></a>
+    <a class="tile" href="cache/lfu-cache.html"><div class="num">C-02 · ready</div><div class="tt">LFU Cache</div><div class="dd">Three HashMaps + frequency buckets. O(1) get/put. Interactive simulator with frequency-bucket visualization. LeetCode #460.</div></a>
+    <a class="tile" href="cache/ttl-cache.html"><div class="num">C-03 · ready</div><div class="tt">TTL Cache</div><div class="dd">Cache with time-to-live expiry. Lazy expiration on get(), active cleanup. Generic &lt;K,V&gt;.</div></a>
+    <a class="tile" href="cache/write-through-cache.html"><div class="num">C-04 · ready</div><div class="tt">Write-Through / Write-Back</div><div class="dd">Write-through: sync to store. Write-back: cache-only + dirty tracking + flush. Interactive flow comparison.</div></a>
+  </div>
+
+  <!-- ======== CONCURRENCY ======== -->
+  <div class="lvlband conc">Concurrency — 7 topics · <b>all ready</b></div>
+  <div class="hub">
+    <a class="tile" href="concurrency/thread-pool.html"><div class="num">CC-01 · ready</div><div class="tt">Thread Pool</div><div class="dd">Fixed worker threads + BlockingQueue. submit() → queue → worker executes. Reuses threads. Hard.</div></a>
+    <a class="tile" href="concurrency/blocking-queue.html"><div class="num">CC-02 · ready</div><div class="tt">Blocking Queue</div><div class="dd">ReentrantLock + 2 Conditions (notFull, notEmpty). put() blocks when full, take() blocks when empty.</div></a>
+    <a class="tile" href="concurrency/read-write-lock.html"><div class="num">CC-03 · ready</div><div class="tt">ReadWrite Lock</div><div class="dd">Multiple readers OR single writer. Writer starvation prevention via writersWaiting counter.</div></a>
+    <a class="tile" href="concurrency/rate-limiter.html"><div class="num">CC-04 · ready</div><div class="tt">Rate Limiter</div><div class="dd">Token Bucket (burst-friendly, O(1)) + Sliding Window Log (exact, O(n)). Two algorithms compared.</div></a>
+    <a class="tile" href="concurrency/producer-consumer.html"><div class="num">CC-05 · ready</div><div class="tt">Producer-Consumer</div><div class="dd">Bounded buffer with synchronized + wait/notifyAll. Classic concurrency pattern.</div></a>
+    <a class="tile" href="concurrency/count-down-latch.html"><div class="num">CC-06 · ready</div><div class="tt">CountDown Latch</div><div class="dd">One-shot synchronizer. await() blocks until count reaches zero via countDown().</div></a>
+    <a class="tile" href="concurrency/semaphore.html"><div class="num">CC-07 · ready</div><div class="tt">Semaphore</div><div class="dd">Counting permits. acquire() blocks if none available. tryAcquire() non-blocking.</div></a>
+  </div>
+
+  <!-- ======== DESIGN ======== -->
+  <div class="lvlband design">Design Patterns — 8 topics · <b>all ready</b></div>
+  <div class="hub">
+    <a class="tile" href="design/bst-iterator.html"><div class="num">DP-01 · ready</div><div class="tt">BST Iterator</div><div class="dd">Stack-based in-order traversal. pushAllLeft() + next(). O(1) avg, O(h) space. LeetCode #173.</div></a>
+    <a class="tile" href="design/observer-pattern.html"><div class="num">DP-02 · ready</div><div class="tt">Observer Pattern</div><div class="dd">EventEmitter with subscribe/unsubscribe/emit. Map&lt;String, List&lt;Observer&gt;&gt;. Foundation of event-driven systems.</div></a>
+    <a class="tile" href="design/pub-sub.html"><div class="num">DP-03 · ready</div><div class="tt">Pub/Sub System</div><div class="dd">Topic-based message routing with async delivery via ExecutorService. ConcurrentHashMap + CopyOnWriteArrayList.</div></a>
+    <a class="tile" href="design/connection-pool.html"><div class="num">DP-04 · ready</div><div class="tt">Connection Pool</div><div class="dd">Semaphore + BlockingQueue. getConnection() acquires permit + polls. releaseConnection() offers + releases. Hard.</div></a>
+    <a class="tile" href="design/logger.html"><div class="num">DP-05 · ready</div><div class="tt">Logger</div><div class="dd">Thread-safe singleton (double-checked locking + volatile) with configurable log levels and Appender strategy.</div></a>
+    <a class="tile" href="design/consistent-hashing.html"><div class="num">DP-06 · ready</div><div class="tt">Consistent Hashing</div><div class="dd">TreeMap ring + virtual nodes. ceilingEntry clockwise lookup with wrap-around. Minimal key redistribution.</div></a>
+    <a class="tile" href="design/event-bus.html"><div class="num">DP-07 · ready</div><div class="tt">Event Bus</div><div class="dd">In-process event emitter: on/off/once/emit. CopyOnWriteArrayList for thread-safe dispatch.</div></a>
+    <a class="tile" href="design/completable-future.html"><div class="num">DP-08 · ready</div><div class="tt">CompletableFuture</div><div class="dd">Async result container: complete(value), get() blocks, thenApply(fn) chains transformations.</div></a>
+  </div>
+
+  <!-- ======== ALGORITHMS ======== -->
+  <div class="lvlband algo">Algorithms — 7 topics · <b>all ready</b></div>
+  <div class="hub">
+    <a class="tile" href="algorithms/merge-sort.html"><div class="num">A-01 · ready</div><div class="tt">Merge Sort</div><div class="dd">Divide-and-conquer: split in half, sort each, merge sorted halves. O(n log n) always, stable, O(n) extra space.</div></a>
+    <a class="tile" href="algorithms/quick-sort.html"><div class="num">A-02 · ready</div><div class="tt">Quick Sort</div><div class="dd">Random pivot + Lomuto partition. In-place, O(n log n) avg, O(n²) worst. NOT stable.</div></a>
+    <a class="tile" href="algorithms/string-builder.html"><div class="num">A-03 · ready</div><div class="tt">StringBuilder</div><div class="dd">Dynamic char[] with 2× growth. append O(1) amortized. Avoids O(n²) string concatenation.</div></a>
+    <a class="tile" href="algorithms/custom-comparator.html"><div class="num">A-04 · ready</div><div class="tt">Custom Comparator</div><div class="dd">Comparable (natural order) vs Comparator (custom). Multi-field chaining with thenComparing. Lambda syntax.</div></a>
+    <a class="tile" href="algorithms/atoi.html"><div class="num">A-05 · ready</div><div class="tt">atoi</div><div class="dd">String-to-integer with 4 steps: skip whitespace, sign, parse digits, clamp overflow. LeetCode #8.</div></a>
+    <a class="tile" href="algorithms/stream-ops.html"><div class="num">A-06 · ready</div><div class="tt">Stream Operations</div><div class="dd">Custom filter, map, flatMap, reduce, distinct, sorted, limit pipeline. Eager MyStream&lt;T&gt;.</div></a>
+    <a class="tile" href="algorithms/immutable-builder.html"><div class="num">A-07 · ready</div><div class="tt">Immutable Builder</div><div class="dd">Final class, private final fields, defensive copy (List.copyOf), Builder with fluent API.</div></a>
+  </div>
+
+  <footer>
+    DSA Interview — Study Canvases · shared <code>assets/canvas.css</code> + <code>assets/canvas.js</code> ·
+    open in a browser or Cursor Live Preview · 3 tabs per topic: Concept / Implementation / Interview ·
+    canvases are built in category batches.
+  </footer>
+
+</div>
+</body>
+</html>

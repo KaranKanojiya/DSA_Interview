@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-02 · Observer Pattern — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> Observer Pattern</div>
+
+  <header class="hero">
+    <h1>Observer Pattern — Implement from Scratch</h1>
+    <div class="sub">EventEmitter with <code>subscribe(event, observer)</code>, <code>unsubscribe()</code>, and <code>emit()</code>. Maintains a <b>Map&lt;String, List&lt;Observer&gt;&gt;</b> — when an event fires, all registered observers are notified. The foundation of event-driven architectures, UI frameworks, and reactive systems.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Amazon · Google · Microsoft</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">subscribe()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">emit()</span> <span class="val on">O(k) k=observers</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(n) total observers</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is the Observer Pattern?</h3>
+            <p>A <b>one-to-many</b> dependency: when a subject changes state, all registered observers are notified automatically. The subject (EventEmitter) doesn't need to know <i>what</i> the observers do — only that they implement <code>update()</code>.</p>
+            <p class="muted">Also called: Listener, Callback, Publish-Subscribe (local variant).</p>
+          </div>
+          <div class="card">
+            <h3>Why use it?</h3>
+            <ul class="tight">
+              <li><b>Decoupling</b> — subject &amp; observers evolve independently</li>
+              <li><b>Open/Closed</b> — add new observers without modifying the emitter</li>
+              <li><b>Event-driven</b> — foundation for DOM events, React state, Spring listeners</li>
+              <li>Interviewers test understanding of loose coupling patterns</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Architecture Diagram</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 880 310" width="880" height="310">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-hl" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+              <marker id="arr-ok" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+
+            <!-- EventEmitter outer box -->
+            <rect x="20" y="30" width="250" height="240" rx="10" style="fill:rgba(251,113,133,.06);stroke:var(--design);stroke-width:1.5"/>
+            <text x="145" y="55" text-anchor="middle" font-size="13" font-weight="bold" fill="#fb7185">EventEmitter</text>
+
+            <!-- Map field -->
+            <rect x="40" y="68" width="210" height="48" rx="6" class="node-box"/>
+            <text x="145" y="88" text-anchor="middle" font-size="10" fill="#b8c1cc">Map&lt;String, List&lt;Observer&gt;&gt;</text>
+            <text x="145" y="106" text-anchor="middle" font-size="10" fill="#fbbf24">listeners</text>
+
+            <!-- subscribe / unsubscribe -->
+            <rect x="40" y="126" width="210" height="44" rx="6" class="node-hl"/>
+            <text x="145" y="146" text-anchor="middle" font-size="10" fill="#2dd4bf">subscribe(event, obs)</text>
+            <text x="145" y="162" text-anchor="middle" font-size="10" fill="#2dd4bf">unsubscribe(event, obs)</text>
+
+            <!-- emit -->
+            <rect x="40" y="180" width="210" height="44" rx="6" style="fill:rgba(251,113,133,.12);stroke:var(--design);stroke-width:1.5"/>
+            <text x="145" y="200" text-anchor="middle" font-size="10" font-weight="600" fill="#fb7185">emit(event, data)</text>
+            <text x="145" y="216" text-anchor="middle" font-size="9" fill="#b8c1cc">loops over all observers</text>
+
+            <!-- Arrows from emitter to observers -->
+            <path d="M270,100 C310,100 310,65 350,65" stroke="#fb7185" stroke-width="1.5" fill="none" marker-end="url(#arr-hl)"/>
+            <path d="M270,150 C310,150 310,165 350,165" stroke="#fb7185" stroke-width="1.5" fill="none" marker-end="url(#arr-hl)"/>
+            <path d="M270,200 C310,200 310,265 350,265" stroke="#fb7185" stroke-width="1.5" fill="none" marker-end="url(#arr-hl)"/>
+
+            <!-- emit label between emitter and observers -->
+            <text x="308" y="130" text-anchor="middle" font-size="9" font-weight="600" fill="#fb7185">emit()</text>
+
+            <!-- Observer Interface box -->
+            <rect x="360" y="5" width="190" height="42" rx="6" style="fill:var(--panel-2);stroke:var(--conc);stroke-width:1.5"/>
+            <text x="455" y="22" text-anchor="middle" font-size="10" font-weight="600" fill="#a78bfa">«interface» Observer</text>
+            <text x="455" y="38" text-anchor="middle" font-size="10" fill="#b8c1cc">update(event, data)</text>
+
+            <!-- implements dashed line -->
+            <line x1="455" y1="47" x2="455" y2="55" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3 2"/>
+            <line x1="550" y1="26" x2="578" y2="26" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3 2"/>
+            <text x="614" y="30" text-anchor="start" font-size="9" fill="#a78bfa">implements</text>
+
+            <!-- Observer 1: Logger -->
+            <rect x="360" y="55" width="190" height="44" rx="6" class="node-hl"/>
+            <text x="455" y="74" text-anchor="middle" font-size="11" font-weight="600" fill="#2dd4bf">Logger</text>
+            <text x="455" y="90" text-anchor="middle" font-size="9" fill="#b8c1cc">logs event + data</text>
+
+            <!-- Observer 2: Analytics -->
+            <rect x="360" y="145" width="190" height="44" rx="6" class="node-hl"/>
+            <text x="455" y="164" text-anchor="middle" font-size="11" font-weight="600" fill="#2dd4bf">Analytics</text>
+            <text x="455" y="180" text-anchor="middle" font-size="9" fill="#b8c1cc">tracks event metrics</text>
+
+            <!-- Observer 3: EmailService -->
+            <rect x="360" y="245" width="190" height="44" rx="6" class="node-hl"/>
+            <text x="455" y="264" text-anchor="middle" font-size="11" font-weight="600" fill="#2dd4bf">EmailService</text>
+            <text x="455" y="280" text-anchor="middle" font-size="9" fill="#b8c1cc">sends notification</text>
+
+            <!-- Flow steps (right column) -->
+            <rect x="610" y="80" width="250" height="145" rx="8" style="fill:var(--panel-2);stroke:var(--border);stroke-width:1"/>
+            <text x="735" y="100" text-anchor="middle" font-size="11" font-weight="bold" fill="#fb7185">Execution Flow</text>
+            <text x="625" y="122" font-size="10" fill="#b8c1cc">1. subscribe("order", logger)</text>
+            <text x="625" y="140" font-size="10" fill="#b8c1cc">2. subscribe("order", analytics)</text>
+            <text x="625" y="162" font-size="10" font-weight="600" fill="#fb7185">3. emit("order", data)</text>
+            <text x="625" y="182" font-size="10" fill="#4ade80">4. → logger.update()</text>
+            <text x="625" y="202" font-size="10" fill="#4ade80">5. → analytics.update()</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--accent)">subscribe(event, observer)</h3>
+            <ol class="tight">
+              <li>Look up event key in listeners map</li>
+              <li>If no list yet → create new list via <code>computeIfAbsent</code></li>
+              <li>Add observer to the list</li>
+            </ol>
+            <p class="muted">O(1) amortized — HashMap put + ArrayList add.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--design)">emit(event, data)</h3>
+            <ol class="tight">
+              <li>Get observer list for event (or empty list)</li>
+              <li>Iterate over all observers</li>
+              <li>Call <code>obs.update(event, data)</code> on each</li>
+            </ol>
+            <p class="muted">O(k) where k = number of observers for that event.</p>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h3 style="color:var(--warn)">unsubscribe(event, observer)</h3>
+          <p>Remove the specific observer from the event's list. Uses <code>List.remove(Object)</code> — O(k) scan. To make it O(1), use a <code>Set</code> instead of <code>List</code>.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Observer Interface</h2><span class="tag">contract</span></div>
+        <p class="muted">Functional interface — observers implement a single <code>update</code> method. Can be a lambda.</p>
+<pre class="code"><span class="kw">interface</span> <span class="ty">Observer</span> {
+    <span class="kw">void</span> update(<span class="ty">String</span> event, <span class="ty">Object</span> data);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>EventEmitter — Fields</h2><span class="tag">subject</span></div>
+<pre class="code"><span class="kw">static class</span> <span class="ty">EventEmitter</span> {
+    <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">List</span>&lt;<span class="ty">Observer</span>&gt;&gt; listeners = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>subscribe(event, observer)</h2><span class="tag">register</span></div>
+<pre class="code"><span class="kw">void</span> subscribe(<span class="ty">String</span> event, <span class="ty">Observer</span> observer) {
+    listeners.computeIfAbsent(event, k -&gt; <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;()).add(observer);
+}</pre>
+        <div class="callout tip"><b>computeIfAbsent</b> — Creates the list only on first subscribe for that event. Cleaner than if-null-then-create boilerplate.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>unsubscribe(event, observer)</h2><span class="tag">deregister</span></div>
+<pre class="code"><span class="kw">void</span> unsubscribe(<span class="ty">String</span> event, <span class="ty">Observer</span> observer) {
+    <span class="ty">List</span>&lt;<span class="ty">Observer</span>&gt; obs = listeners.get(event);
+    <span class="kw">if</span> (obs != <span class="kw">null</span>) obs.remove(observer);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>emit(event, data)</h2><span class="tag">notify all</span></div>
+<pre class="code"><span class="kw">void</span> emit(<span class="ty">String</span> event, <span class="ty">Object</span> data) {
+    <span class="kw">for</span> (<span class="ty">Observer</span> obs : listeners.getOrDefault(event, <span class="ty">List</span>.of())) {
+        obs.update(event, data);
+    }
+}</pre>
+        <div class="callout info"><b>List.of()</b> returns an immutable empty list — avoids null checks. If no observers are registered, the loop simply doesn't execute.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.ObserverPattern</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/ObserverPattern.java</code> (55 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>subscribe()</code></td><td class="o1">O(1)</td><td>HashMap lookup + ArrayList add (amortized)</td></tr>
+            <tr><td><code>unsubscribe()</code></td><td class="on">O(k)</td><td>Linear scan of observer list to find &amp; remove</td></tr>
+            <tr><td><code>emit()</code></td><td class="on">O(k)</td><td>Iterates all k observers registered for that event</td></tr>
+            <tr><td>Space</td><td>O(n)</td><td>Total number of observer registrations across all events</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Async notification?</h3></div>
+            <div class="c-body">
+              <p>Wrap each <code>obs.update()</code> call in an <code>ExecutorService.submit()</code>. This decouples the emitter from slow observers — if one observer takes 5 seconds, it doesn't block the others. This is exactly what <b>Pub/Sub</b> adds over basic Observer.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Weak references to prevent leaks?</h3></div>
+            <div class="c-body">
+              <p>If observers are short-lived but forget to unsubscribe, the emitter holds strong references → memory leak. Use <code>WeakReference&lt;Observer&gt;</code> in the list. When GC collects the observer, the weak ref becomes null — clean up on next emit. Java's <code>WeakHashMap</code> can help.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Typed events with generics?</h3></div>
+            <div class="c-body">
+              <p>Instead of <code>Object data</code>, use generics: <code>Observer&lt;T&gt;</code> with <code>update(T data)</code>. This provides compile-time type safety. The emitter becomes <code>Map&lt;Class&lt;?&gt;, List&lt;Observer&lt;?&gt;&gt;&gt;</code>. Guava's <code>EventBus</code> uses this approach with <code>@Subscribe</code> annotation.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>React useState as Observer?</h3></div>
+            <div class="c-body">
+              <p>React's <code>useState</code> is an observer pattern: the component "subscribes" to state. When <code>setState()</code> is called (emit), React re-renders the component (notification). The virtual DOM diffing is the "update" method. This is why state changes trigger re-renders.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>ConcurrentModificationException</b> — If an observer's <code>update()</code> calls <code>subscribe()</code> or <code>unsubscribe()</code> on the same event, you'll get a CME while iterating. Fix: iterate over a <b>copy</b> of the list, or use <code>CopyOnWriteArrayList</code>.</div>
+        <div class="callout"><b>Observer exception kills emit</b> — If one observer throws, subsequent observers won't be notified. Wrap each call in try-catch or use a defensive iteration pattern.</div>
+        <div class="callout tip"><b>Observer vs Pub/Sub</b> — Observer is <b>synchronous</b> and <b>tightly coupled</b> (subject knows observer interface). Pub/Sub adds a <b>message broker</b> in between, enabling async delivery and full decoupling. This repo's <code>PubSubSystem</code> is the next step.</div>
+        <div class="callout"><b>Ordering guarantee</b> — Observers are notified in registration order (ArrayList preserves insertion order). If you use a Set, order is non-deterministic.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/ObserverPattern.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

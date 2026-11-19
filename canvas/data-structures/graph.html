@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-09 · Graph BFS &amp; DFS — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> Graph — BFS &amp; DFS</div>
+
+  <header class="hero">
+    <h1>Graph — BFS &amp; DFS from Scratch</h1>
+    <div class="sub">Adjacency list representation using <code>Map&lt;vertex, List&lt;neighbors&gt;&gt;</code>. <b>BFS</b> with a Queue explores level by level — finds shortest path in unweighted graphs. <b>DFS</b> with recursion explores as deep as possible before backtracking. The backbone of social networks, routing, dependency resolution, and hundreds of LeetCode problems.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Google · Meta · Amazon</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">BFS</span> <span class="val on">O(V+E)</span></span>
+      <span class="cx"><span class="label">DFS</span> <span class="val on">O(V+E)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val on">O(V+E)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Adjacency List vs Matrix</h3>
+            <table>
+              <thead><tr><th></th><th>Adj List</th><th>Adj Matrix</th></tr></thead>
+              <tbody>
+                <tr><td>Space</td><td><span class="o1" style="color:var(--ok)">O(V+E)</span></td><td><span class="on" style="color:var(--warn)">O(V²)</span></td></tr>
+                <tr><td>Add edge</td><td>O(1)</td><td>O(1)</td></tr>
+                <tr><td>Check edge</td><td>O(degree)</td><td>O(1)</td></tr>
+                <tr><td>Iterate neighbors</td><td>O(degree)</td><td>O(V)</td></tr>
+                <tr><td>Best for</td><td>Sparse graphs</td><td>Dense graphs</td></tr>
+              </tbody>
+            </table>
+            <p class="muted">Most real-world graphs are sparse → adjacency list is the default choice.</p>
+          </div>
+          <div class="card">
+            <h3>When BFS vs DFS?</h3>
+            <ul class="tight">
+              <li><b>BFS:</b> shortest path (unweighted), level-order, closest nodes, minimum moves</li>
+              <li><b>DFS:</b> cycle detection, topological sort, connected components, pathfinding in mazes, backtracking</li>
+              <li><b>Both work:</b> reachability, counting components, graph traversal</li>
+            </ul>
+            <p class="muted">BFS uses a <b>Queue</b> (FIFO). DFS uses a <b>Stack</b> or recursion (LIFO).</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Graph with BFS &amp; DFS Traversal</h2></div>
+        <div class="viz">
+          <svg width="560" height="280" viewBox="0 0 560 280">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+
+            <!-- Graph visualization -->
+            <text x="140" y="14" text-anchor="middle" font-size="11" fill="#8b95a3">UNDIRECTED GRAPH</text>
+
+            <!-- Node 0 -->
+            <circle cx="140" cy="50" r="22" fill="rgba(45,212,191,.15)" stroke="var(--accent)" stroke-width="2"/>
+            <text x="140" y="55" text-anchor="middle" font-size="14" font-weight="600" fill="#2dd4bf">0</text>
+
+            <!-- Node 1 -->
+            <circle cx="60" cy="130" r="22" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1.5"/>
+            <text x="60" y="135" text-anchor="middle" font-size="14" fill="#e6edf3">1</text>
+
+            <!-- Node 2 -->
+            <circle cx="220" cy="130" r="22" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1.5"/>
+            <text x="220" y="135" text-anchor="middle" font-size="14" fill="#e6edf3">2</text>
+
+            <!-- Node 3 -->
+            <circle cx="60" cy="220" r="22" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1.5"/>
+            <text x="60" y="225" text-anchor="middle" font-size="14" fill="#e6edf3">3</text>
+
+            <!-- Node 4 -->
+            <circle cx="220" cy="220" r="22" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1.5"/>
+            <text x="220" y="225" text-anchor="middle" font-size="14" fill="#e6edf3">4</text>
+
+            <!-- Edges -->
+            <line x1="122" y1="65" x2="78" y2="115" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="158" y1="65" x2="202" y2="115" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="60" y1="152" x2="60" y2="198" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="82" y1="130" x2="198" y2="130" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="78" y1="215" x2="198" y2="215" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="220" y1="152" x2="220" y2="198" stroke="#8b95a3" stroke-width="1.5"/>
+
+            <!-- BFS order -->
+            <text x="420" y="40" text-anchor="middle" font-size="12" font-weight="600" fill="#38bdf8">BFS from 0 (Queue)</text>
+            <rect x="340" y="50" width="160" height="90" rx="8" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1"/>
+            <text x="350" y="72" font-size="12" fill="#38bdf8">Level 0:</text>
+            <text x="420" y="72" font-size="12" fill="#e6edf3">0</text>
+            <text x="350" y="92" font-size="12" fill="#38bdf8">Level 1:</text>
+            <text x="420" y="92" font-size="12" fill="#e6edf3">1, 2</text>
+            <text x="350" y="112" font-size="12" fill="#38bdf8">Level 2:</text>
+            <text x="420" y="112" font-size="12" fill="#e6edf3">3, 4</text>
+            <text x="420" y="152" text-anchor="middle" font-size="11" fill="#8b95a3">Order: 0 → 1 → 2 → 3 → 4</text>
+
+            <!-- DFS order -->
+            <text x="420" y="185" text-anchor="middle" font-size="12" font-weight="600" fill="#a78bfa">DFS from 0 (Stack)</text>
+            <rect x="340" y="195" width="160" height="60" rx="8" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1"/>
+            <text x="350" y="217" font-size="12" fill="#a78bfa">Path:</text>
+            <text x="385" y="217" font-size="12" fill="#e6edf3">0 → 1 → 3 → 4 → 2</text>
+            <text x="350" y="237" font-size="12" fill="#a78bfa">Style:</text>
+            <text x="385" y="237" font-size="12" fill="#e6edf3">Go deep, then backtrack</text>
+          </svg>
+        </div>
+        <div class="callout info"><b>BFS visits level by level</b> — all nodes at distance 1 before distance 2. This is why BFS finds shortest paths in unweighted graphs. DFS dives deep along one path before exploring alternatives.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Adjacency List Representation</h2></div>
+        <div class="flow">
+          <div class="step ds"><div class="box">Vertex 0</div><small>→ [1, 2]</small></div>
+          <div class="step ds"><div class="box">Vertex 1</div><small>→ [0, 2, 3]</small></div>
+          <div class="step ds"><div class="box">Vertex 2</div><small>→ [0, 1, 4]</small></div>
+          <div class="step ds"><div class="box">Vertex 3</div><small>→ [1, 4]</small></div>
+          <div class="step ds"><div class="box">Vertex 4</div><small>→ [2, 3]</small></div>
+        </div>
+        <p class="muted" style="margin-top:8px">Each vertex maps to a list of its neighbors. For undirected graphs, each edge appears in both lists. Total storage: O(V + 2E) = O(V + E).</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">adjacency list</span></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>, <span class="ty">List</span>&lt;<span class="ty">Integer</span>&gt;&gt; adjList;
+
+<span class="kw">public</span> <span class="ty">Graph</span>() {
+    <span class="kw">this</span>.adjList = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>addVertex &amp; addEdge</h2><span class="tag">build the graph</span></div>
+<pre class="code"><span class="kw">public void</span> addVertex(<span class="kw">int</span> v) {
+    adjList.putIfAbsent(v, <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;());
+}
+
+<span class="kw">public void</span> addEdge(<span class="kw">int</span> src, <span class="kw">int</span> dest) {
+    adjList.computeIfAbsent(src, k -&gt; <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;()).add(dest);
+    adjList.computeIfAbsent(dest, k -&gt; <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;()).add(src);  <span class="cm">// undirected</span>
+}
+
+<span class="cm">// For directed graph, omit the second line</span></pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>BFS — Queue-Based (Level-Order)</h2><span class="tag">O(V+E)</span></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">List</span>&lt;<span class="ty">Integer</span>&gt; bfs(<span class="kw">int</span> start) {
+    <span class="ty">List</span>&lt;<span class="ty">Integer</span>&gt; result = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+    <span class="ty">Set</span>&lt;<span class="ty">Integer</span>&gt; visited = <span class="kw">new</span> <span class="ty">HashSet</span>&lt;&gt;();
+    <span class="ty">Queue</span>&lt;<span class="ty">Integer</span>&gt; queue = <span class="kw">new</span> <span class="ty">LinkedList</span>&lt;&gt;();
+
+    visited.add(start);
+    queue.offer(start);
+
+    <span class="kw">while</span> (!queue.isEmpty()) {
+        <span class="kw">int</span> curr = queue.poll();      <span class="cm">// dequeue front</span>
+        result.add(curr);
+
+        <span class="kw">for</span> (<span class="kw">int</span> neighbor : adjList.getOrDefault(curr, <span class="ty">Collections</span>.emptyList())) {
+            <span class="kw">if</span> (!visited.contains(neighbor)) {
+                visited.add(neighbor);   <span class="cm">// mark BEFORE enqueue to avoid duplicates</span>
+                queue.offer(neighbor);
+            }
+        }
+    }
+    <span class="kw">return</span> result;
+}</pre>
+        <div class="callout tip"><b>Mark visited when enqueuing, not when dequeuing.</b> If you mark when dequeuing, the same node can be enqueued multiple times by different neighbors, wasting time and space. This is the #1 BFS bug.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>DFS — Recursive</h2><span class="tag">O(V+E)</span></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">List</span>&lt;<span class="ty">Integer</span>&gt; dfs(<span class="kw">int</span> start) {
+    <span class="ty">List</span>&lt;<span class="ty">Integer</span>&gt; result = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+    <span class="ty">Set</span>&lt;<span class="ty">Integer</span>&gt; visited = <span class="kw">new</span> <span class="ty">HashSet</span>&lt;&gt;();
+    dfsHelper(start, visited, result);
+    <span class="kw">return</span> result;
+}
+
+<span class="kw">private void</span> dfsHelper(<span class="kw">int</span> node, <span class="ty">Set</span>&lt;<span class="ty">Integer</span>&gt; visited, <span class="ty">List</span>&lt;<span class="ty">Integer</span>&gt; result) {
+    visited.add(node);
+    result.add(node);
+
+    <span class="kw">for</span> (<span class="kw">int</span> neighbor : adjList.getOrDefault(node, <span class="ty">Collections</span>.emptyList())) {
+        <span class="kw">if</span> (!visited.contains(neighbor)) {
+            dfsHelper(neighbor, visited, result);  <span class="cm">// recurse deeper</span>
+        }
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>hasPath — Reachability Check</h2><span class="tag">BFS/DFS</span></div>
+<pre class="code"><span class="kw">public boolean</span> hasPath(<span class="kw">int</span> src, <span class="kw">int</span> dest) {
+    <span class="kw">if</span> (src == dest) <span class="kw">return true</span>;
+    <span class="ty">Set</span>&lt;<span class="ty">Integer</span>&gt; visited = <span class="kw">new</span> <span class="ty">HashSet</span>&lt;&gt;();
+    <span class="ty">Queue</span>&lt;<span class="ty">Integer</span>&gt; queue = <span class="kw">new</span> <span class="ty">LinkedList</span>&lt;&gt;();
+    visited.add(src);
+    queue.offer(src);
+
+    <span class="kw">while</span> (!queue.isEmpty()) {
+        <span class="kw">int</span> curr = queue.poll();
+        <span class="kw">for</span> (<span class="kw">int</span> neighbor : adjList.getOrDefault(curr, <span class="ty">Collections</span>.emptyList())) {
+            <span class="kw">if</span> (neighbor == dest) <span class="kw">return true</span>;
+            <span class="kw">if</span> (!visited.contains(neighbor)) {
+                visited.add(neighbor);
+                queue.offer(neighbor);
+            }
+        }
+    }
+    <span class="kw">return false</span>;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.Graph</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/Graph.java</code></p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>BFS</code></td><td><span style="color:var(--warn);font-weight:600">O(V+E)</span></td><td>Visit every vertex once, examine every edge once</td></tr>
+            <tr><td><code>DFS</code></td><td><span style="color:var(--warn);font-weight:600">O(V+E)</span></td><td>Same — every vertex and edge visited exactly once</td></tr>
+            <tr><td><code>addVertex</code></td><td class="o1">O(1)</td><td>HashMap put</td></tr>
+            <tr><td><code>addEdge</code></td><td class="o1">O(1)</td><td>Append to adjacency list</td></tr>
+            <tr><td><code>hasPath</code></td><td><span style="color:var(--warn);font-weight:600">O(V+E)</span></td><td>BFS/DFS worst case traverses entire graph</td></tr>
+            <tr><td>Space (graph)</td><td>O(V+E)</td><td>Adjacency list: V lists + E total entries</td></tr>
+            <tr><td>Space (BFS)</td><td>O(V)</td><td>Queue + visited set can hold all vertices</td></tr>
+            <tr><td>Space (DFS)</td><td>O(V)</td><td>Recursion stack + visited set</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Topological Sort (LC #207, #210)?</h3></div>
+            <div class="c-body">
+              <p><b>Kahn's BFS:</b> compute in-degrees. Enqueue all nodes with in-degree 0. Process: decrement neighbors' in-degrees, enqueue when they hit 0. If result size &lt; V, there's a cycle. O(V+E).</p>
+              <p><b>DFS:</b> Run DFS, add node to result after all descendants are processed (post-order). Reverse the result. Cycle = back edge detected (node in current recursion stack).</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Cycle Detection?</h3></div>
+            <div class="c-body">
+              <p><b>Undirected:</b> BFS/DFS — if you visit a neighbor that's already visited and it's not the parent, there's a cycle. Or use Union-Find: if two endpoints of an edge are in the same set, cycle found.</p>
+              <p><b>Directed:</b> DFS with 3 colors (white/gray/black). Gray → gray edge = back edge = cycle. Or use Kahn's: if topo sort doesn't include all nodes, there's a cycle.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Shortest Path: Dijkstra / Bellman-Ford?</h3></div>
+            <div class="c-body">
+              <p><b>Dijkstra:</b> Greedy BFS with a min-heap (priority queue). Always process the closest unvisited node. O((V+E) log V) with a binary heap. Doesn't work with negative edges.</p>
+              <p><b>Bellman-Ford:</b> Relax all edges V-1 times. O(V × E). Handles negative edges. One more pass detects negative cycles. Slower but more general.</p>
+              <p class="muted">Unweighted shortest path = plain BFS. Weighted = Dijkstra (no negative) or Bellman-Ford.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Connected Components / Bipartite?</h3></div>
+            <div class="c-body">
+              <p><b>Connected components:</b> Run BFS/DFS from each unvisited node. Each run discovers one component. Count the number of runs = number of components.</p>
+              <p><b>Bipartite check:</b> BFS with 2-coloring. Assign colors alternating by level. If a neighbor has the same color as the current node, the graph is NOT bipartite. O(V+E).</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Disconnected graph</b> — BFS/DFS from one node won't visit all vertices. To traverse the entire graph, loop over all vertices and run BFS/DFS from each unvisited one. This is essential for counting connected components.</div>
+        <div class="callout"><b>Self-loops</b> — An edge from a node to itself. Your visited set prevents infinite loops, but be aware when checking for cycles — a self-loop is a cycle of length 1.</div>
+        <div class="callout tip"><b>Directed vs Undirected</b> — For undirected, <code>addEdge</code> adds to both adjacency lists. For directed, only add to the source's list. The distinction matters for cycle detection, topological sort, and strongly connected components.</div>
+        <div class="callout info"><b>DFS stack overflow</b> — For very deep graphs (e.g., a 10^6 node chain), recursive DFS can overflow the call stack. Use iterative DFS with an explicit stack: <code>Stack&lt;Integer&gt; stack = new Stack&lt;&gt;()</code>, same logic but loop instead of recurse.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/Graph.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

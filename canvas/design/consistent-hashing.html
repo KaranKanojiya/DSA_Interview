@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-06 · Consistent Hashing — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> Consistent Hashing</div>
+
+  <header class="hero">
+    <h1>Consistent Hashing — Implement from Scratch</h1>
+    <div class="sub">Distributes keys across nodes with <b>minimal redistribution</b> when nodes are added or removed. Uses a sorted <b>TreeMap ring</b> with <b>virtual nodes</b> for balance. Without consistent hashing: <code>hash(key) % N</code> → changing N moves ~all keys. With consistent hashing: adding/removing moves only ~1/N keys.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">Google · Amazon · Meta</span>
+      <span class="badge">~65 lines</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">addNode()</span> <span class="val ologn">O(V log N)</span></span>
+      <span class="cx"><span class="label">getNode()</span> <span class="val ologn">O(log N)</span></span>
+      <span class="cx"><span class="label">removeNode()</span> <span class="val ologn">O(V log N)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val on">O(S × V)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is Consistent Hashing?</h3>
+            <p>A technique that maps both <b>keys</b> and <b>nodes</b> (servers) onto the same hash ring. A key is assigned to the first node found <b>clockwise</b> from its hash position. Adding or removing a node only affects its immediate neighbors.</p>
+            <p class="muted">Used in distributed caches (Memcached, Redis Cluster), CDNs, load balancers, and distributed databases (DynamoDB, Cassandra).</p>
+          </div>
+          <div class="card">
+            <h3>Why virtual nodes?</h3>
+            <ul class="tight">
+              <li>With few physical nodes, hash distribution is <b>uneven</b> — some nodes get 60%+ of keys</li>
+              <li>Virtual nodes: each server gets V positions on the ring (e.g., <code>Server-A-vn0</code>, <code>Server-A-vn1</code>, …)</li>
+              <li>More positions → more uniform distribution</li>
+              <li>V = 100–200 is common in production</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Hash Ring Diagram</h2></div>
+        <div class="flow">
+          <div class="step design"><div class="box">hash(key)</div><small>compute hash<br>position on ring</small></div>
+          <div class="step design"><div class="box">ceilingEntry()</div><small>find first node<br>clockwise</small></div>
+          <div class="step design"><div class="box">wrap-around</div><small>if null → use<br>firstEntry()</small></div>
+          <div class="step" style="flex:0.6"><div class="box" style="border-color:var(--ok);color:var(--ok)">Node found</div><small>return server<br>for this key</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg viewBox="0 0 720 380" width="720" height="380">
+            <defs>
+              <marker id="arr-ch" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+              <marker id="arr-g" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+            <!-- Ring circle -->
+            <circle cx="240" cy="190" r="155" fill="none" stroke="#4b5563" stroke-width="2"/>
+            <text x="240" y="190" text-anchor="middle" font-size="13" font-weight="bold" fill="#8b95a3">Hash Ring</text>
+            <text x="240" y="206" text-anchor="middle" font-size="10" fill="#8b95a3">TreeMap (sorted)</text>
+            <!-- Server A nodes (teal) at ~30°, ~150°, ~270° -->
+            <circle cx="374" cy="113" r="10" fill="#2dd4bf" opacity="0.8"/>
+            <text x="396" y="108" font-size="10" font-weight="600" fill="#2dd4bf">A-vn0</text>
+            <circle cx="106" cy="113" r="10" fill="#2dd4bf" opacity="0.8"/>
+            <text x="68" y="108" font-size="10" font-weight="600" fill="#2dd4bf">A-vn1</text>
+            <circle cx="240" cy="345" r="10" fill="#2dd4bf" opacity="0.8"/>
+            <text x="260" y="362" font-size="10" font-weight="600" fill="#2dd4bf">A-vn2</text>
+            <!-- Server B nodes (amber) at ~90°, ~210°, ~330° -->
+            <circle cx="395" cy="190" r="10" fill="#fbbf24" opacity="0.8"/>
+            <text x="412" y="186" font-size="10" font-weight="600" fill="#fbbf24">B-vn0</text>
+            <circle cx="162" cy="324" r="10" fill="#fbbf24" opacity="0.8"/>
+            <text x="124" y="338" font-size="10" font-weight="600" fill="#fbbf24">B-vn1</text>
+            <circle cx="318" cy="56" r="10" fill="#fbbf24" opacity="0.8"/>
+            <text x="334" y="48" font-size="10" font-weight="600" fill="#fbbf24">B-vn2</text>
+            <!-- Server C nodes (rose) at ~60°, ~180°, ~300° -->
+            <circle cx="394" cy="152" r="10" fill="#fb7185" opacity="0.8"/>
+            <text x="410" y="152" font-size="10" font-weight="600" fill="#fb7185">C-vn0</text>
+            <circle cx="85" cy="190" r="10" fill="#fb7185" opacity="0.8"/>
+            <text x="47" y="190" font-size="10" font-weight="600" fill="#fb7185">C-vn1</text>
+            <circle cx="318" cy="324" r="10" fill="#fb7185" opacity="0.8"/>
+            <text x="334" y="340" font-size="10" font-weight="600" fill="#fb7185">C-vn2</text>
+            <!-- Key lookup example -->
+            <circle cx="170" cy="86" r="6" fill="#e6edf3"/>
+            <text x="150" y="72" font-size="10" font-weight="600" fill="#e6edf3">key:user:1</text>
+            <path d="M 170 92 Q 160 100 135 108" fill="none" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-g)"/>
+            <text x="130" y="128" font-size="9" fill="#4ade80">→ Server A</text>
+            <!-- Second key example -->
+            <circle cx="350" cy="260" r="6" fill="#e6edf3"/>
+            <text x="370" y="260" font-size="10" font-weight="600" fill="#e6edf3">key:order:100</text>
+            <path d="M 345 265 Q 325 290 322 318" fill="none" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-g)"/>
+            <text x="290" y="310" font-size="9" fill="#4ade80">→ Server C</text>
+            <!-- Legend -->
+            <rect x="500" y="40" width="200" height="145" rx="8" class="node-box"/>
+            <text x="600" y="62" text-anchor="middle" font-size="11" font-weight="600" fill="#e6edf3">Legend</text>
+            <circle cx="520" cy="85" r="7" fill="#2dd4bf" opacity="0.8"/>
+            <text x="540" y="89" font-size="10" fill="#2dd4bf">Server A (3 vnodes)</text>
+            <circle cx="520" cy="110" r="7" fill="#fbbf24" opacity="0.8"/>
+            <text x="540" y="114" font-size="10" fill="#fbbf24">Server B (3 vnodes)</text>
+            <circle cx="520" cy="135" r="7" fill="#fb7185" opacity="0.8"/>
+            <text x="540" y="139" font-size="10" fill="#fb7185">Server C (3 vnodes)</text>
+            <circle cx="520" cy="160" r="5" fill="#e6edf3"/>
+            <text x="540" y="164" font-size="10" fill="#e6edf3">Key → clockwise lookup</text>
+            <!-- Note about TreeMap -->
+            <rect x="500" y="210" width="200" height="70" rx="8" class="node-box"/>
+            <text x="600" y="232" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">TreeMap API</text>
+            <text x="600" y="252" text-anchor="middle" font-size="10" fill="#b8c1cc">ceilingEntry(hash)</text>
+            <text x="600" y="266" text-anchor="middle" font-size="10" fill="#b8c1cc">= clockwise lookup</text>
+          </svg>
+        </div>
+        <div class="callout info" style="margin-top:12px"><b>ceilingEntry(hash)</b> — TreeMap's <code>ceilingEntry(key)</code> returns the entry with the smallest key ≥ given key. This is exactly "find the first node clockwise" on the ring. If null (past the max), wrap around with <code>firstEntry()</code>.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Why Minimal Redistribution?</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--warn)">hash(key) % N</h3>
+            <p>Adding a server changes N. Almost <b>every key</b> remaps to a different server. For 1M keys and 10 servers, ~90% of keys move.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--ok)">Consistent Hashing</h3>
+            <p>Adding a server only affects keys between it and its predecessor on the ring. For 1M keys and 10 servers, only ~10% of keys move (approximately 1/N).</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">ring setup</span></div>
+        <p class="muted">TreeMap provides sorted key order — perfect for clockwise lookup. <code>virtualNodes</code> count determines distribution quality.</p>
+<pre class="code"><span class="kw">private final</span> <span class="ty">TreeMap</span>&lt;<span class="ty">Integer</span>, <span class="ty">String</span>&gt; ring = <span class="kw">new</span> <span class="ty">TreeMap</span>&lt;&gt;();
+<span class="kw">private final int</span> virtualNodes;
+
+<span class="kw">public</span> <span class="ty">ConsistentHashing</span>(<span class="kw">int</span> virtualNodes) {
+    <span class="kw">this</span>.virtualNodes = virtualNodes;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>addNode(node) — Place Virtual Nodes on Ring</h2><span class="tag">O(V log N)</span></div>
+<pre class="code"><span class="kw">public void</span> addNode(<span class="ty">String</span> node) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; virtualNodes; i++) {
+        <span class="kw">int</span> hash = hash(node + <span class="st">"-vn"</span> + i);   <span class="cm">// unique hash per vnode</span>
+        ring.put(hash, node);                <span class="cm">// O(log N) TreeMap insert</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>removeNode(node) — Remove All Virtual Nodes</h2><span class="tag">O(V log N)</span></div>
+<pre class="code"><span class="kw">public void</span> removeNode(<span class="ty">String</span> node) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; virtualNodes; i++) {
+        ring.remove(hash(node + <span class="st">"-vn"</span> + i));  <span class="cm">// O(log N) remove</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>getNode(key) — Clockwise Lookup</h2><span class="tag">O(log N)</span></div>
+        <p class="muted">The core operation: hash the key, find the nearest server clockwise using <code>ceilingEntry</code>, wrap around if needed.</p>
+<pre class="code"><span class="kw">public</span> <span class="ty">String</span> getNode(<span class="ty">String</span> key) {
+    <span class="kw">if</span> (ring.isEmpty()) <span class="kw">return null</span>;
+    <span class="kw">int</span> hash = hash(key);
+    <span class="cm">// Find first node with hash ≥ key's hash (clockwise)</span>
+    <span class="ty">Map.Entry</span>&lt;<span class="ty">Integer</span>, <span class="ty">String</span>&gt; entry = ring.ceilingEntry(hash);
+    <span class="kw">if</span> (entry == <span class="kw">null</span>) {
+        entry = ring.firstEntry();   <span class="cm">// wrap around the ring</span>
+    }
+    <span class="kw">return</span> entry.getValue();
+}
+
+<span class="kw">private int</span> hash(<span class="ty">String</span> key) {
+    <span class="kw">return</span> <span class="ty">Math</span>.abs(key.hashCode());
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.ConsistentHashing</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/ConsistentHashing.java</code> (65 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>addNode(node)</code></td><td class="ologn">O(V log N)</td><td>V virtual node insertions, each O(log N) in TreeMap</td></tr>
+            <tr><td><code>removeNode(node)</code></td><td class="ologn">O(V log N)</td><td>V virtual node removals, each O(log N) in TreeMap</td></tr>
+            <tr><td><code>getNode(key)</code></td><td class="ologn">O(log N)</td><td>Single ceilingEntry lookup in TreeMap</td></tr>
+            <tr><td>Space</td><td>O(S × V)</td><td>S servers × V virtual nodes stored in the TreeMap</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:6px">N = total entries in ring (S × V). V = virtual nodes per server. S = number of servers.</p>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Virtual node count tuning?</h3></div>
+            <div class="c-body">
+              <p>Too few vnodes (e.g., 3) → uneven distribution with hotspots. Too many (e.g., 1000) → more memory, slower add/remove. Sweet spot: <b>100–200 per node</b>. With 150 vnodes and 10 servers, standard deviation of load drops from ~40% (no vnodes) to ~5%. Measure with real workloads.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Weighted nodes?</h3></div>
+            <div class="c-body">
+              <p>Give more powerful servers more virtual nodes (proportional to capacity). E.g., a 32GB server gets 200 vnodes, a 16GB server gets 100 vnodes. This naturally routes more keys to the bigger server. When upgrading hardware, just increase vnodes — only ~1/N keys redistribute.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Replication (N clockwise)?</h3></div>
+            <div class="c-body">
+              <p>For fault tolerance, replicate each key to the next N <b>distinct physical nodes</b> clockwise on the ring. Skip virtual nodes belonging to the same physical server. DynamoDB uses N=3 (preference list). If a node fails, its keys are already replicated on the next nodes — no data loss.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Distributed cache (Memcached/Redis Cluster)?</h3></div>
+            <div class="c-body">
+              <p>Memcached clients use consistent hashing client-side to pick a server per key. Redis Cluster uses a fixed 16384 <b>hash slots</b> — each node owns a range of slots. Adding a node migrates specific slot ranges. This is a variant of consistent hashing with explicit slot assignment rather than a ring.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Jump consistent hashing?</h3></div>
+            <div class="c-body">
+              <p>Google's jump consistent hash (2014): a <b>stateless</b> algorithm — no ring, no memory. Given a key and bucket count, returns the bucket in O(ln N) time. Perfectly balanced, minimal disruption. Limitation: only supports sequential bucket IDs (0..N-1), so not suitable when nodes join/leave by name. Best for numbered shards.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Hash collisions on the ring</b> — Two virtual nodes may hash to the same position. TreeMap.put overwrites the old entry. In production, use a high-quality hash (MD5, MurmurHash3) to minimize collisions. <code>hashCode()</code> is not ideal for uniform distribution.</div>
+        <div class="callout"><b>Empty ring</b> — <code>getNode()</code> must handle an empty ring (return null or throw). Always check <code>ring.isEmpty()</code> before calling <code>ceilingEntry()</code>.</div>
+        <div class="callout tip"><b>wrap-around via firstEntry()</b> — When <code>ceilingEntry(hash)</code> returns null, the key's hash is larger than all nodes. Wrap around to <code>firstEntry()</code> — the "beginning" of the ring. This is the circular nature of the hash ring.</div>
+        <div class="callout info"><b>Better hash function</b> — Java's <code>hashCode()</code> is not designed for uniform distribution. In production, use MurmurHash3 or MD5 (truncated to int). This dramatically reduces hotspots and virtual node collisions.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>hash(key) % N vs Consistent Hashing</h2></div>
+        <table>
+          <thead><tr><th>Feature</th><th>hash % N</th><th>Consistent Hashing</th></tr></thead>
+          <tbody>
+            <tr><td>Add/remove server</td><td class="on">~all keys move</td><td class="o1">~1/N keys move</td></tr>
+            <tr><td>Balance</td><td style="color:var(--ok)">Perfect (uniform hash)</td><td>Good with virtual nodes</td></tr>
+            <tr><td>Lookup time</td><td class="o1">O(1)</td><td class="ologn">O(log N)</td></tr>
+            <tr><td>Memory</td><td class="o1">O(1)</td><td>O(S × V)</td></tr>
+            <tr><td>Use case</td><td>Fixed server count</td><td style="color:var(--ok)">Dynamic clusters</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/ConsistentHashing.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

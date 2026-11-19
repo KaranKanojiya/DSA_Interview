@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rate Limiter — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Concurrency</a><span class="sep">›</span> Rate Limiter</div>
+
+  <header class="hero">
+    <h1>Rate Limiter — Implement from Scratch</h1>
+    <div class="sub">Two algorithms: <b>Token Bucket</b> (allows bursts, O(1) memory, lazy refill — used by AWS/Stripe) and <b>Sliding Window Log</b> (exact counting, O(n) memory). Controls the number of requests a client can make within a time window.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium-Hard</span>
+      <span class="badge">Google · Amazon · Meta · Microsoft</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">Token Bucket</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Sliding Window</span> <span class="val on">O(n)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is Rate Limiting?</h3>
+            <p>Restrict the number of requests a client can make within a time window. Example: max <b>5 requests per second</b> per user.</p>
+            <ul class="tight">
+              <li>Protects servers from abuse and overload</li>
+              <li>Ensures fair resource sharing across clients</li>
+              <li>Required by API gateways, CDNs, auth systems</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Two Algorithms</h3>
+            <ul class="tight">
+              <li><b>Token Bucket</b> — bucket fills at a rate, each request drains one token. No tokens = denied. Allows bursts up to capacity.</li>
+              <li><b>Sliding Window Log</b> — store timestamp of each request. Remove old ones. Count remaining. Exact but uses more memory.</li>
+            </ul>
+            <p class="muted">Token Bucket is the industry standard (AWS, Stripe, Google). Sliding Window is simpler to reason about.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Token Bucket Visual</h2></div>
+        <div class="viz">
+          <svg width="750" height="270" viewBox="0 0 750 270">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-ok" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+            <!-- Refill source -->
+            <rect x="10" y="10" width="140" height="42" rx="8" style="fill:rgba(74,222,128,.08);stroke:#4ade80;stroke-width:1.5"/>
+            <text x="80" y="28" text-anchor="middle" font-size="12" font-weight="600" fill="#4ade80">Refill Rate</text>
+            <text x="80" y="44" text-anchor="middle" font-size="10" fill="#b8c1cc">2 tokens/sec</text>
+            <!-- Arrow down to bucket -->
+            <line x1="80" y1="52" x2="80" y2="75" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-ok)"/>
+            <text x="120" y="68" font-size="9" fill="#8b95a3">lazy refill</text>
+            <!-- Bucket (taller, wider) -->
+            <rect x="20" y="80" width="120" height="160" rx="4" style="fill:none;stroke:#a78bfa;stroke-width:2"/>
+            <text x="80" y="100" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">Bucket (cap=5)</text>
+            <!-- Empty slots -->
+            <rect x="34" y="108" width="92" height="20" rx="4" style="fill:none;stroke:#4b5563;stroke-width:1;stroke-dasharray:3 2"/><text x="80" y="122" text-anchor="middle" font-size="9" fill="#8b95a3">empty</text>
+            <rect x="34" y="132" width="92" height="20" rx="4" style="fill:none;stroke:#4b5563;stroke-width:1;stroke-dasharray:3 2"/><text x="80" y="146" text-anchor="middle" font-size="9" fill="#8b95a3">empty</text>
+            <!-- Tokens -->
+            <rect x="34" y="156" width="92" height="22" rx="4" style="fill:rgba(45,212,191,.2);stroke:#2dd4bf;stroke-width:1"/><text x="80" y="171" text-anchor="middle" font-size="10" fill="#2dd4bf">token</text>
+            <rect x="34" y="182" width="92" height="22" rx="4" style="fill:rgba(45,212,191,.2);stroke:#2dd4bf;stroke-width:1"/><text x="80" y="197" text-anchor="middle" font-size="10" fill="#2dd4bf">token</text>
+            <rect x="34" y="208" width="92" height="22" rx="4" style="fill:rgba(45,212,191,.2);stroke:#2dd4bf;stroke-width:1"/><text x="80" y="223" text-anchor="middle" font-size="10" fill="#2dd4bf">token</text>
+            <!-- Arrow: bucket → ALLOWED -->
+            <line x1="140" y1="150" x2="195" y2="130" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-ok)"/>
+            <!-- ALLOWED box -->
+            <rect x="200" y="110" width="175" height="42" rx="6" style="fill:rgba(74,222,128,.08);stroke:#4ade80;stroke-width:1.5"/>
+            <text x="288" y="130" text-anchor="middle" font-size="12" fill="#4ade80">Request → ALLOWED</text>
+            <text x="288" y="145" text-anchor="middle" font-size="10" fill="#8b95a3">tokens &gt;= 1 → consume</text>
+            <!-- Arrow: bucket → DENIED -->
+            <line x1="140" y1="200" x2="195" y2="200" stroke="#f87171" stroke-width="1.5" marker-end="url(#arr)"/>
+            <!-- DENIED box -->
+            <rect x="200" y="175" width="175" height="42" rx="6" style="fill:rgba(248,113,113,.08);stroke:#f87171;stroke-width:1.5"/>
+            <text x="288" y="195" text-anchor="middle" font-size="12" fill="#f87171">Request → DENIED</text>
+            <text x="288" y="210" text-anchor="middle" font-size="10" fill="#8b95a3">tokens &lt; 1 → reject</text>
+            <!-- Properties box (right side, well separated) -->
+            <rect x="430" y="30" width="300" height="210" rx="8" class="node-box"/>
+            <text x="580" y="55" text-anchor="middle" font-size="13" font-weight="600" fill="#a78bfa">Token Bucket Properties</text>
+            <line x1="450" y1="68" x2="710" y2="68" stroke="#4b5563" stroke-width="0.5"/>
+            <text x="460" y="92" font-size="11" fill="#4ade80">+</text><text x="480" y="92" font-size="11" fill="#e6edf3">Allows bursts up to capacity</text>
+            <text x="460" y="116" font-size="11" fill="#4ade80">+</text><text x="480" y="116" font-size="11" fill="#e6edf3">O(1) memory — just a counter</text>
+            <text x="460" y="140" font-size="11" fill="#4ade80">+</text><text x="480" y="140" font-size="11" fill="#e6edf3">Lazy refill — no background thread</text>
+            <text x="460" y="164" font-size="11" fill="#4ade80">+</text><text x="480" y="164" font-size="11" fill="#e6edf3">Industry standard (AWS, Stripe)</text>
+            <text x="460" y="192" font-size="11" fill="#fbbf24">~</text><text x="480" y="192" font-size="11" fill="#b8c1cc">Approximate — not exact counting</text>
+            <text x="460" y="218" font-size="10" fill="#8b95a3">refill(): elapsed x rate, capped at capacity</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Sliding Window Log Visual</h2></div>
+        <div class="viz">
+          <svg width="700" height="150">
+            <defs>
+              <marker id="arr2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+            </defs>
+            <!-- Timeline -->
+            <line x1="30" y1="60" x2="670" y2="60" stroke="var(--border)" stroke-width="1.5"/>
+            <!-- Window bracket -->
+            <line x1="200" y1="40" x2="200" y2="80" stroke="var(--conc)" stroke-width="2"/>
+            <line x1="600" y1="40" x2="600" y2="80" stroke="var(--conc)" stroke-width="2"/>
+            <line x1="200" y1="40" x2="600" y2="40" stroke="var(--conc)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="400" y="35" text-anchor="middle" font-size="10" fill="#a78bfa">window (1 second)</text>
+            <!-- Expired timestamps -->
+            <circle cx="80" cy="60" r="5" fill="var(--border)"/>
+            <text x="80" y="90" text-anchor="middle" font-size="9" fill="#8b95a3">t=0.1</text>
+            <text x="80" y="103" text-anchor="middle" font-size="8" fill="#f87171">expired → removed</text>
+            <circle cx="140" cy="60" r="5" fill="var(--border)"/>
+            <text x="140" y="90" text-anchor="middle" font-size="9" fill="#8b95a3">t=0.3</text>
+            <text x="140" y="103" text-anchor="middle" font-size="8" fill="#f87171">expired</text>
+            <!-- Active timestamps -->
+            <circle cx="280" cy="60" r="6" fill="var(--ok)"/>
+            <text x="280" y="90" text-anchor="middle" font-size="9" fill="#4ade80">t=1.2</text>
+            <circle cx="380" cy="60" r="6" fill="var(--ok)"/>
+            <text x="380" y="90" text-anchor="middle" font-size="9" fill="#4ade80">t=1.5</text>
+            <circle cx="480" cy="60" r="6" fill="var(--ok)"/>
+            <text x="480" y="90" text-anchor="middle" font-size="9" fill="#4ade80">t=1.7</text>
+            <!-- New request -->
+            <circle cx="580" cy="60" r="6" fill="var(--cache)" stroke="var(--cache)" stroke-width="2"/>
+            <text x="580" y="90" text-anchor="middle" font-size="9" fill="#fbbf24">t=1.9 (new)</text>
+            <!-- Count label -->
+            <rect x="250" y="110" width="280" height="28" rx="6" class="node-box"/>
+            <text x="390" y="128" text-anchor="middle" font-size="11" fill="#b8c1cc">count = 3 in window | limit = 3 → <tspan fill="#f87171" font-weight="600">DENIED</tspan></text>
+          </svg>
+        </div>
+        <div class="callout info"><b>Deque of timestamps:</b> <code>pollFirst()</code> removes expired entries from the front. <code>addLast(now)</code> records new requests. O(n) worst case for cleanup, but amortized O(1) per request since each timestamp is removed at most once.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Algorithm Comparison</h2></div>
+        <table>
+          <thead><tr><th>Property</th><th>Token Bucket</th><th>Sliding Window Log</th><th>Fixed Window</th></tr></thead>
+          <tbody>
+            <tr><td>Burst handling</td><td style="color:var(--cache)">Allows bursts up to capacity</td><td style="color:var(--ok)">Smooth — exact counting</td><td style="color:var(--warn)">2x burst at window edge</td></tr>
+            <tr><td>Memory</td><td class="o1">O(1)</td><td class="on">O(n) — stores timestamps</td><td class="o1">O(1)</td></tr>
+            <tr><td>Precision</td><td>Approximate</td><td style="color:var(--ok)">Exact</td><td>Approximate</td></tr>
+            <tr><td>Implementation</td><td>Simple — counter + timer</td><td>Simple — deque + cleanup</td><td>Simplest — counter + reset</td></tr>
+            <tr><td>Used by</td><td>AWS, Stripe, Nginx</td><td>Analytics, audit logs</td><td>Simple APIs</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Token Bucket — Fields &amp; Constructor</h2><span class="tag">algorithm 1</span></div>
+<pre class="code"><span class="kw">static class</span> <span class="ty">TokenBucket</span> {
+    <span class="kw">private final int</span> capacity;          <span class="cm">// max tokens the bucket can hold</span>
+    <span class="kw">private final double</span> refillRate;     <span class="cm">// tokens added per second</span>
+    <span class="kw">private double</span> tokens;               <span class="cm">// current available tokens</span>
+    <span class="kw">private long</span> lastRefillTime;          <span class="cm">// when we last added tokens</span>
+
+    <span class="ty">TokenBucket</span>(<span class="kw">int</span> capacity, <span class="kw">double</span> refillRate) {
+        <span class="kw">this</span>.capacity = capacity;
+        <span class="kw">this</span>.refillRate = refillRate;
+        <span class="kw">this</span>.tokens = capacity;              <span class="cm">// start full</span>
+        <span class="kw">this</span>.lastRefillTime = <span class="ty">System</span>.nanoTime();
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Token Bucket — allowRequest()</h2><span class="tag">O(1)</span></div>
+        <p class="muted">Lazy refill: calculate tokens earned since last call, then check if we have enough. No background thread needed.</p>
+<pre class="code"><span class="kw">synchronized boolean</span> allowRequest() {
+    refill();  <span class="cm">// add tokens based on elapsed time</span>
+
+    <span class="kw">if</span> (tokens &gt;= <span class="num">1.0</span>) {
+        tokens -= <span class="num">1.0</span>;    <span class="cm">// consume one token</span>
+        <span class="kw">return true</span>;       <span class="cm">// allowed</span>
+    }
+    <span class="kw">return false</span>;          <span class="cm">// denied — no tokens available</span>
+}
+
+<span class="cm">// Lazy refill — calculate tokens earned since last check</span>
+<span class="kw">private void</span> refill() {
+    <span class="kw">long</span> now = <span class="ty">System</span>.nanoTime();
+    <span class="kw">double</span> elapsed = (now - lastRefillTime) / <span class="num">1_000_000_000.0</span>;  <span class="cm">// seconds</span>
+    <span class="kw">double</span> newTokens = elapsed * refillRate;
+
+    <span class="cm">// Add tokens but don't exceed capacity (bucket has a max)</span>
+    tokens = <span class="ty">Math</span>.min(capacity, tokens + newTokens);
+    lastRefillTime = now;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Sliding Window Log — Fields &amp; Constructor</h2><span class="tag">algorithm 2</span></div>
+<pre class="code"><span class="kw">static class</span> <span class="ty">SlidingWindowLog</span> {
+    <span class="kw">private final int</span> maxRequests;        <span class="cm">// max requests allowed in the window</span>
+    <span class="kw">private final long</span> windowSizeMs;      <span class="cm">// window size in milliseconds</span>
+    <span class="kw">private final</span> <span class="ty">Deque</span>&lt;<span class="ty">Long</span>&gt; timestamps; <span class="cm">// timestamps of recent requests</span>
+
+    <span class="ty">SlidingWindowLog</span>(<span class="kw">int</span> maxRequests, <span class="kw">long</span> windowSizeMs) {
+        <span class="kw">this</span>.maxRequests = maxRequests;
+        <span class="kw">this</span>.windowSizeMs = windowSizeMs;
+        <span class="kw">this</span>.timestamps = <span class="kw">new</span> <span class="ty">ArrayDeque</span>&lt;&gt;();
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Sliding Window Log — allowRequest()</h2><span class="tag">O(n) worst</span></div>
+        <p class="muted">Remove expired timestamps from the front of the deque, then check if we're under the limit.</p>
+<pre class="code"><span class="kw">synchronized boolean</span> allowRequest() {
+    <span class="kw">long</span> now = <span class="ty">System</span>.currentTimeMillis();
+    <span class="kw">long</span> windowStart = now - windowSizeMs;
+
+    <span class="cm">// Remove timestamps outside the window (older than windowStart)</span>
+    <span class="kw">while</span> (!timestamps.isEmpty() &amp;&amp; timestamps.peekFirst() &lt;= windowStart) {
+        timestamps.pollFirst();
+    }
+
+    <span class="cm">// Check if we're under the limit</span>
+    <span class="kw">if</span> (timestamps.size() &lt; maxRequests) {
+        timestamps.addLast(now);  <span class="cm">// record this request</span>
+        <span class="kw">return true</span>;              <span class="cm">// allowed</span>
+    }
+    <span class="kw">return false</span>;                 <span class="cm">// denied — window full</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.concurrency.RateLimiter</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/concurrency/RateLimiter.java</code> (180 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Algorithm</th><th>Time</th><th>Space</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><b>Token Bucket</b></td><td class="o1">O(1)</td><td class="o1">O(1)</td><td>Just a counter + timestamp — constant work per request</td></tr>
+            <tr><td><b>Sliding Window Log</b></td><td class="on">O(n) worst</td><td class="on">O(n)</td><td>n = requests in window. Amortized O(1) per request</td></tr>
+            <tr><td>Fixed Window Counter</td><td class="o1">O(1)</td><td class="o1">O(1)</td><td>Simple but allows 2x burst at window boundary</td></tr>
+            <tr><td>Sliding Window Counter</td><td class="o1">O(1)</td><td class="o1">O(1)</td><td>Hybrid: weighted average of current + previous window</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Distributed rate limiter with Redis?</h3></div>
+            <div class="c-body">
+              <p>Store token count or window in Redis. Use <b>Lua scripts</b> for atomic check-and-decrement (EVAL ensures atomicity). Alternative: Redis <code>INCR</code> + <code>EXPIRE</code> for fixed window. Stripe and Cloudflare use Redis + Lua for their rate limiters. Key pattern: <code>rate:{userId}:{windowId}</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Fixed window counter?</h3></div>
+            <div class="c-body">
+              <p>Divide time into fixed windows (e.g., each second). One counter per window, reset at window boundary. Problem: a burst at window end + burst at next window start = 2x the limit. Simple and O(1) but imprecise at boundaries.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Sliding window counter (hybrid)?</h3></div>
+            <div class="c-body">
+              <p>Combine fixed window counter with weighted overlap. <code>count = prevWindow × overlapRatio + currentWindow</code>. Example: 70% into current window → <code>prev × 0.3 + current</code>. O(1) time and space, smoother than fixed window, used by Cloudflare.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Per-user rate limiting?</h3></div>
+            <div class="c-body">
+              <p>Use <code>Map&lt;String, RateLimiter&gt;</code> keyed by user ID. Lazy-create limiter on first request. Need a cleanup mechanism for inactive users (LRU eviction or TTL). In production, store in Redis with user-specific keys.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Clock precision</b> — Token Bucket uses <code>System.nanoTime()</code> (monotonic, high resolution) for elapsed time calculation. <code>currentTimeMillis()</code> can jump due to NTP clock adjustments. Sliding Window uses millis because it stores wall-clock timestamps for window comparison.</div>
+        <div class="callout"><b>Burst handling</b> — Token Bucket allows a burst of up to <code>capacity</code> requests instantly (if bucket is full). If you need strict per-second limits without bursts, use Sliding Window Log or set bucket capacity = 1 second's worth of tokens.</div>
+        <div class="callout tip"><b>Lazy refill is key</b> — No background thread calculating tokens. The <code>refill()</code> method is called inside <code>allowRequest()</code>, computing tokens based on elapsed time. This makes the implementation stateless between calls — much simpler than a timer-based approach.</div>
+        <div class="callout tip"><b>tokens as double</b> — Using <code>double</code> instead of <code>int</code> allows fractional token accumulation. With <code>refillRate=2.5</code>, after 0.4 seconds you'd have 1.0 token. Integer math would lose this precision and break sub-second refill rates.</div>
+        <div class="callout info"><b>synchronized on both classes</b> — Both <code>allowRequest()</code> methods are <code>synchronized</code> for thread safety. In a high-throughput system, consider <code>AtomicLong</code> + CAS loop to avoid lock contention, or per-user locks to reduce lock scope.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/concurrency/RateLimiter.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

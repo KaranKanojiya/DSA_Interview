@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-01 · LRU Cache — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Caches</a><span class="sep">›</span> LRU Cache</div>
+
+  <header class="hero">
+    <h1>LRU Cache — Implement from Scratch</h1>
+    <div class="sub">Least Recently Used — evicts the item not accessed for the longest time. <b>HashMap + Doubly Linked List = O(1) for both get and put.</b> The #1 most asked cache question across Amazon, Google, Meta, Microsoft, Apple (~30% of interviews). LeetCode #146.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">LeetCode #146</span>
+      <span class="badge">Amazon · Google · Meta · Microsoft · Apple</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">get()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">put()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(capacity)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is LRU?</h3>
+            <p>A fixed-capacity cache that, when full, evicts the <b>least recently used</b> entry — the one that hasn't been read or written for the longest time.</p>
+            <p class="muted">Every <code>get()</code> and <code>put()</code> marks the key as "most recently used".</p>
+          </div>
+          <div class="card">
+            <h3>Why build from scratch?</h3>
+            <ul class="tight">
+              <li>Tests understanding of <b>HashMap + Doubly Linked List</b> synergy</li>
+              <li>O(1) for both operations — interviewers want to see you achieve this</li>
+              <li><code>LinkedHashMap</code> does it built-in, but interviewers want the manual version</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Data Structure — HashMap + Doubly Linked List</h2></div>
+        <div class="flow">
+          <div class="step ds"><div class="box">HashMap</div><small>key → Node<br>O(1) lookup</small></div>
+          <div class="step cache"><div class="box">Doubly Linked List</div><small>access order<br>HEAD = most recent</small></div>
+          <div class="step" style="flex:0.6"><div class="box" style="border-color:var(--ok);color:var(--ok)">O(1) + O(1)</div><small>both ops<br>constant time</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg width="680" height="90">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+            <!-- HEAD dummy -->
+            <rect x="10" y="25" width="55" height="40" rx="6" class="dummy"/>
+            <text x="37" y="50" text-anchor="middle" fill="#8b95a3" font-size="11">HEAD</text>
+            <!-- arrows and nodes -->
+            <line x1="65" y1="45" x2="85" y2="45" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect x="90" y="25" width="100" height="40" rx="6" class="node-hl"/>
+            <text x="140" y="42" text-anchor="middle" font-size="12" font-weight="600" fill="#2dd4bf">key=3</text>
+            <text x="140" y="56" text-anchor="middle" font-size="10" fill="#b8c1cc">most recent</text>
+            <line x1="190" y1="45" x2="215" y2="45" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect x="220" y="25" width="100" height="40" rx="6" class="node-box"/>
+            <text x="270" y="50" text-anchor="middle" font-size="12" fill="#b8c1cc">key=1</text>
+            <line x1="320" y1="45" x2="345" y2="45" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <rect x="350" y="25" width="100" height="40" rx="6" class="node-box"/>
+            <text x="400" y="50" text-anchor="middle" font-size="12" fill="#b8c1cc">key=2</text>
+            <line x1="450" y1="45" x2="475" y2="45" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <!-- TAIL dummy -->
+            <rect x="480" y="25" width="55" height="40" rx="6" class="dummy"/>
+            <text x="507" y="50" text-anchor="middle" fill="#8b95a3" font-size="11">TAIL</text>
+            <!-- labels -->
+            <text x="400" y="82" text-anchor="middle" font-size="10" fill="#f87171">← least recent (evict first)</text>
+            <text x="140" y="15" text-anchor="middle" font-size="10" fill="#4ade80">← most recent</text>
+          </svg>
+        </div>
+        <div class="callout tip" style="margin-top:12px"><b>Why dummy head &amp; tail?</b> They eliminate null checks — real nodes always sit between them. We never remove the sentinels.</div>
+        <div class="callout info"><b>Why doubly linked?</b> Need O(1) removal of any node. With a doubly linked list + direct reference from HashMap, you can unlink a node by updating <code>prev.next</code> and <code>next.prev</code> — no traversal needed. A singly linked list would need O(n) to find the previous node.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--accent)">get(key)</h3>
+            <ol class="tight">
+              <li>Look up key in HashMap → O(1)</li>
+              <li>If miss → return -1</li>
+              <li>If hit → remove node from current position</li>
+              <li>Re-insert node right after HEAD (most recent)</li>
+              <li>Return value</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">put(key, value)</h3>
+            <ol class="tight">
+              <li>If key exists → update value, move to HEAD</li>
+              <li>If cache full → remove TAIL.prev (LRU node), remove from HashMap</li>
+              <li>Create new Node(key, value)</li>
+              <li>Insert right after HEAD</li>
+              <li>Add to HashMap: key → node</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- Interactive Simulator -->
+      <section id="lru-sim">
+        <div class="sec-h"><span class="n">4</span><h2>Interactive Simulator</h2><span class="tag">try it</span></div>
+        <div class="sim">
+          <div class="sim-controls">
+            <label style="font-size:12px;color:var(--muted)">Capacity:</label>
+            <input id="lru-cap" type="number" value="3" min="1" max="10" style="width:50px">
+            <label style="font-size:12px;color:var(--muted);margin-left:12px">Key:</label>
+            <input id="lru-key" type="number" value="1" style="width:60px">
+            <label style="font-size:12px;color:var(--muted)">Value:</label>
+            <input id="lru-val" type="number" value="100" style="width:60px">
+            <button class="btn primary" id="lru-put">put()</button>
+            <button class="btn" id="lru-get">get()</button>
+            <button class="btn" id="lru-reset">Reset</button>
+          </div>
+          <div class="viz" id="lru-viz" style="min-height:80px"></div>
+          <div class="sim-log" id="lru-log"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Node — Doubly Linked List</h2><span class="tag">inner class</span></div>
+        <p class="muted">Each node stores key + value + prev/next pointers. Key is stored so that during eviction from the tail, we can also remove the entry from the HashMap.</p>
+<pre class="code"><span class="kw">private static class</span> <span class="ty">Node</span> {
+    <span class="kw">int</span> key;
+    <span class="kw">int</span> value;
+    <span class="ty">Node</span> prev;
+    <span class="ty">Node</span> next;
+
+    <span class="ty">Node</span>(<span class="kw">int</span> key, <span class="kw">int</span> value) {
+        <span class="kw">this</span>.key = key;
+        <span class="kw">this</span>.value = value;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Fields &amp; Constructor</h2><span class="tag">cache setup</span></div>
+<pre class="code"><span class="kw">private final int</span> capacity;
+<span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>, <span class="ty">Node</span>&gt; map;   <span class="cm">// key → Node (O(1) lookup)</span>
+<span class="kw">private final</span> <span class="ty">Node</span> head;                 <span class="cm">// dummy head (most recent side)</span>
+<span class="kw">private final</span> <span class="ty">Node</span> tail;                 <span class="cm">// dummy tail (least recent side)</span>
+
+<span class="kw">public</span> <span class="ty">LRUCache</span>(<span class="kw">int</span> capacity) {
+    <span class="kw">this</span>.capacity = capacity;
+    <span class="kw">this</span>.map = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+    <span class="kw">this</span>.head = <span class="kw">new</span> <span class="ty">Node</span>(-<span class="num">1</span>, -<span class="num">1</span>);
+    <span class="kw">this</span>.tail = <span class="kw">new</span> <span class="ty">Node</span>(-<span class="num">1</span>, -<span class="num">1</span>);
+    head.next = tail;
+    tail.prev = head;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>get(key) — O(1)</h2><span class="tag">read path</span></div>
+<pre class="code"><span class="kw">public int</span> get(<span class="kw">int</span> key) {
+    <span class="kw">if</span> (!map.containsKey(key)) {
+        <span class="kw">return</span> -<span class="num">1</span>;  <span class="cm">// cache miss</span>
+    }
+    <span class="ty">Node</span> node = map.get(key);
+    removeNode(node);       <span class="cm">// detach from current position</span>
+    addToHead(node);        <span class="cm">// attach right after head (most recent)</span>
+    <span class="kw">return</span> node.value;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>put(key, value) — O(1)</h2><span class="tag">write path</span></div>
+<pre class="code"><span class="kw">public void</span> put(<span class="kw">int</span> key, <span class="kw">int</span> value) {
+    <span class="cm">// Case 1: Key already exists → update + move to head</span>
+    <span class="kw">if</span> (map.containsKey(key)) {
+        <span class="ty">Node</span> node = map.get(key);
+        node.value = value;
+        removeNode(node);
+        addToHead(node);
+        <span class="kw">return</span>;
+    }
+    <span class="cm">// Case 2: Cache is full → evict LRU (tail.prev)</span>
+    <span class="kw">if</span> (map.size() == capacity) {
+        <span class="ty">Node</span> lru = tail.prev;
+        removeNode(lru);
+        map.remove(lru.key);  <span class="cm">// that's why Node stores key!</span>
+    }
+    <span class="cm">// Case 3: Add new node</span>
+    <span class="ty">Node</span> newNode = <span class="kw">new</span> <span class="ty">Node</span>(key, value);
+    addToHead(newNode);
+    map.put(key, newNode);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Helpers — removeNode &amp; addToHead</h2><span class="tag">O(1) linked list ops</span></div>
+        <div class="grid g2">
+          <div>
+            <p class="muted">Remove: unlink node by connecting its neighbors</p>
+<pre class="code"><span class="cm">// Before: ... ↔ A ↔ node ↔ B ↔ ...</span>
+<span class="cm">// After:  ... ↔ A ↔ B ↔ ...</span>
+<span class="kw">private void</span> removeNode(<span class="ty">Node</span> node) {
+    node.prev.next = node.next;
+    node.next.prev = node.prev;
+}</pre>
+          </div>
+          <div>
+            <p class="muted">Add to head: insert right after the dummy head</p>
+<pre class="code"><span class="cm">// Before: head ↔ X ↔ ...</span>
+<span class="cm">// After:  head ↔ node ↔ X ↔ ...</span>
+<span class="kw">private void</span> addToHead(<span class="ty">Node</span> node) {
+    node.next = head.next;
+    node.prev = head;
+    head.next.prev = node;
+    head.next = node;
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.cache.LRUCache</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/cache/LRUCache.java</code> (208 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>get(key)</code></td><td class="o1">O(1)</td><td>HashMap lookup + linked list remove/insert (all constant)</td></tr>
+            <tr><td><code>put(key, val)</code></td><td class="o1">O(1)</td><td>HashMap insert + linked list insert + optional evict (all constant)</td></tr>
+            <tr><td>Space</td><td>O(capacity)</td><td>HashMap entries + doubly linked list nodes</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Thread-safe LRU?</h3></div>
+            <div class="c-body">
+              <p>Use <code>ReentrantReadWriteLock</code> — read lock for <code>get()</code>, write lock for <code>put()</code>. Or use <code>ConcurrentHashMap</code> + synchronized linked list operations. Java's <code>Collections.synchronizedMap(new LinkedHashMap(...))</code> is a quick shortcut but uses a global lock.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>LRU with TTL?</h3></div>
+            <div class="c-body">
+              <p>Store a <code>timestamp</code> in each node. On <code>get()</code>, check if <code>now - timestamp > TTL</code> and treat as miss if expired. Background cleanup thread can scan periodically. Combine with this repo's <code>TTLCache</code> approach.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Distributed LRU?</h3></div>
+            <div class="c-body">
+              <p>Consistent hashing across multiple cache servers. Each server runs its own LRU. Client hashes the key to determine which server to query. Redis uses an approximation: sample N keys, evict the one with the oldest access time.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Why not just use LinkedHashMap?</h3></div>
+            <div class="c-body">
+              <p><code>LinkedHashMap(capacity, 0.75f, true)</code> with <code>removeEldestEntry()</code> gives you LRU in ~5 lines. But interviewers want to see you build the doubly linked list + HashMap yourself to prove you understand the mechanics.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Node stores key</b> — When evicting from the tail, you need the key to remove the HashMap entry. Forgetting to store the key in the Node is the #1 bug.</div>
+        <div class="callout"><b>Dummy sentinels</b> — Without dummy head/tail, every add/remove needs null checks for edge cases (empty list, single element). Sentinels eliminate all of them.</div>
+        <div class="callout tip"><b>Update existing key</b> — <code>put(key, newValue)</code> when key exists must update the value AND move to head. Don't just update the value in place — that fails the "recently used" part.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>vs Java Built-in</h2></div>
+        <table>
+          <thead><tr><th>Feature</th><th>Your LRUCache</th><th>LinkedHashMap</th></tr></thead>
+          <tbody>
+            <tr><td>Core structure</td><td>HashMap + custom DLL</td><td>HashMap + built-in DLL</td></tr>
+            <tr><td>Access-order mode</td><td>Always (by design)</td><td>Constructor flag <code>accessOrder=true</code></td></tr>
+            <tr><td>Eviction</td><td>Manual in <code>put()</code></td><td>Override <code>removeEldestEntry()</code></td></tr>
+            <tr><td>Thread-safe</td><td>No (add locks yourself)</td><td>No (same)</td></tr>
+            <tr><td>Interview value</td><td style="color:var(--ok)">High — shows understanding</td><td>Low — "import and done"</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/cache/LRUCache.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

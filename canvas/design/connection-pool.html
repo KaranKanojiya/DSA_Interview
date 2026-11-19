@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-04 · Connection Pool — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> Connection Pool</div>
+
+  <header class="hero">
+    <h1>Connection Pool — Implement from Scratch</h1>
+    <div class="sub">Fixed pool of reusable connections using <b>Semaphore</b> (limits concurrency) + <b>BlockingQueue</b> (stores connections). <code>getConnection()</code> acquires a permit and polls; <code>releaseConnection()</code> offers and releases. The same pattern powers HikariCP, DBCP, and every production connection pool.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">Amazon · Microsoft · Google</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">getConnection()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">releaseConnection()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(pool size)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Connection Pool?</h3>
+            <p>A cache of <b>pre-created, reusable connections</b> (database, network, etc.). Instead of opening a new connection per request (expensive — TCP handshake, auth, TLS), you <b>borrow</b> one from the pool and <b>return</b> it when done.</p>
+            <p class="muted">Same pattern for thread pools, object pools, buffer pools.</p>
+          </div>
+          <div class="card">
+            <h3>Why Semaphore + BlockingQueue?</h3>
+            <ul class="tight">
+              <li><b>Semaphore</b> — limits max concurrent borrows to pool size</li>
+              <li><b>BlockingQueue</b> — thread-safe FIFO storage of idle connections</li>
+              <li>When pool exhausted, <code>acquire()</code> blocks the caller</li>
+              <li>No synchronized blocks needed — both primitives handle thread safety</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Architecture Diagram</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 800 320" width="800" height="320">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-hl" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+              <marker id="arr-ok" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+
+            <!-- Requesting Threads -->
+            <text x="75" y="18" text-anchor="middle" font-size="12" font-weight="bold" fill="#fb7185">Client Threads</text>
+
+            <rect x="15" y="30" width="130" height="40" rx="6" class="node-box"/>
+            <text x="80" y="47" text-anchor="middle" font-size="10" font-weight="600" fill="#e6edf3">Thread-1</text>
+            <text x="80" y="62" text-anchor="middle" font-size="9" fill="#4ade80">has Connection-1</text>
+
+            <rect x="15" y="85" width="130" height="40" rx="6" class="node-box"/>
+            <text x="80" y="102" text-anchor="middle" font-size="10" font-weight="600" fill="#e6edf3">Thread-2</text>
+            <text x="80" y="117" text-anchor="middle" font-size="9" fill="#4ade80">has Connection-2</text>
+
+            <rect x="15" y="140" width="130" height="40" rx="6" style="fill:var(--panel-2);stroke:var(--warn);stroke-width:1.5"/>
+            <text x="80" y="157" text-anchor="middle" font-size="10" font-weight="600" fill="#f87171">Thread-3</text>
+            <text x="80" y="172" text-anchor="middle" font-size="9" fill="#f87171">BLOCKED (waiting)</text>
+
+            <rect x="15" y="195" width="130" height="40" rx="6" style="fill:var(--panel-2);stroke:var(--warn);stroke-width:1.5"/>
+            <text x="80" y="212" text-anchor="middle" font-size="10" font-weight="600" fill="#f87171">Thread-4</text>
+            <text x="80" y="227" text-anchor="middle" font-size="9" fill="#f87171">BLOCKED (waiting)</text>
+
+            <!-- Arrows to Semaphore -->
+            <line x1="145" y1="105" x2="225" y2="105" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-hl)"/>
+            <text x="185" y="98" text-anchor="middle" font-size="9" fill="#fb7185">acquire()</text>
+
+            <!-- Semaphore -->
+            <rect x="235" y="50" width="150" height="120" rx="10" style="fill:rgba(167,139,250,.08);stroke:var(--conc);stroke-width:1.5"/>
+            <text x="310" y="75" text-anchor="middle" font-size="11" font-weight="bold" fill="#a78bfa">Semaphore</text>
+            <text x="310" y="92" text-anchor="middle" font-size="10" fill="#b8c1cc">permits = 2</text>
+
+            <!-- Permit indicators -->
+            <rect x="260" y="105" width="45" height="28" rx="6" style="fill:rgba(248,113,113,.15);stroke:var(--warn);stroke-width:1"/>
+            <text x="282" y="123" text-anchor="middle" font-size="9" fill="#f87171">used</text>
+            <rect x="315" y="105" width="45" height="28" rx="6" style="fill:rgba(248,113,113,.15);stroke:var(--warn);stroke-width:1"/>
+            <text x="337" y="123" text-anchor="middle" font-size="9" fill="#f87171">used</text>
+
+            <text x="310" y="155" text-anchor="middle" font-size="9" fill="#fbbf24">0 available → blocks</text>
+
+            <!-- Arrow to BlockingQueue -->
+            <line x1="385" y1="105" x2="445" y2="105" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="415" y="98" text-anchor="middle" font-size="9" fill="#a78bfa">poll()</text>
+
+            <!-- BlockingQueue -->
+            <rect x="455" y="35" width="170" height="150" rx="10" style="fill:rgba(251,113,133,.06);stroke:var(--design);stroke-width:1.5"/>
+            <text x="540" y="58" text-anchor="middle" font-size="11" font-weight="bold" fill="#fb7185">BlockingQueue</text>
+            <text x="540" y="73" text-anchor="middle" font-size="10" fill="#b8c1cc">LinkedBlockingQueue</text>
+
+            <!-- Connections in pool (empty) -->
+            <rect x="475" y="85" width="130" height="40" rx="6" class="dummy"/>
+            <text x="540" y="107" text-anchor="middle" font-size="10" fill="#8b95a3">(empty — both</text>
+            <text x="540" y="120" text-anchor="middle" font-size="10" fill="#8b95a3">borrowed)</text>
+
+            <!-- Return path -->
+            <text x="540" y="155" text-anchor="middle" font-size="9" fill="#4ade80">↑ offer(conn) on release</text>
+
+            <!-- Release flow -->
+            <path d="M80 70 Q 80 275 310 275 Q 540 275 540 195" stroke="#4ade80" stroke-width="1.5" fill="none" stroke-dasharray="5 3" marker-end="url(#arr-ok)"/>
+            <text x="310" y="268" text-anchor="middle" font-size="9" fill="#4ade80">releaseConnection(conn) → offer + release</text>
+
+            <!-- Database -->
+            <rect x="660" y="70" width="120" height="80" rx="10" style="fill:rgba(56,189,248,.08);stroke:var(--algo);stroke-width:1.5"/>
+            <text x="720" y="100" text-anchor="middle" font-size="11" font-weight="bold" fill="#38bdf8">Database</text>
+            <text x="720" y="118" text-anchor="middle" font-size="10" fill="#b8c1cc">MySQL, Postgres</text>
+            <text x="720" y="135" text-anchor="middle" font-size="9" fill="#b8c1cc">etc.</text>
+
+            <!-- Connection lines -->
+            <line x1="625" y1="100" x2="658" y2="100" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3 2"/>
+            <line x1="625" y1="120" x2="658" y2="120" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3 2"/>
+          </svg>
+        </div>
+        <div class="callout tip" style="margin-top:12px"><b>Why two primitives?</b> The Semaphore gates access (blocks when all borrowed), while the BlockingQueue provides thread-safe storage. Together they give you a complete pool with zero synchronized blocks.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--design)">getConnection()</h3>
+            <ol class="tight">
+              <li><code>semaphore.acquire()</code> — blocks if no permits</li>
+              <li><code>pool.poll()</code> — take connection from queue</li>
+              <li>Return connection to caller</li>
+            </ol>
+            <p class="muted">If all connections are borrowed, the calling thread <b>sleeps</b> at step 1 until one is released.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--ok)">releaseConnection(conn)</h3>
+            <ol class="tight">
+              <li><code>pool.offer(conn)</code> — return connection to queue</li>
+              <li><code>semaphore.release()</code> — give back permit</li>
+              <li>A blocked thread wakes up and proceeds</li>
+            </ol>
+            <p class="muted">Order matters: offer first, then release. Otherwise a thread could acquire a permit but find an empty queue.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Borrow/Return Flow</h2></div>
+        <div class="flow">
+          <div class="step design"><div class="box">getConnection()</div><small>client requests<br>a connection</small></div>
+          <div class="step design"><div class="box">semaphore.acquire()</div><small>blocks if all<br>permits taken</small></div>
+          <div class="step design"><div class="box">pool.poll()</div><small>take idle conn<br>from queue</small></div>
+          <div class="step" style="flex:0.7"><div class="box" style="border-color:var(--ok);color:var(--ok)">Use Connection</div><small>execute queries<br>then release</small></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Connection — Inner Class</h2><span class="tag">pooled resource</span></div>
+<pre class="code"><span class="kw">static class</span> <span class="ty">Connection</span> {
+    <span class="kw">private final int</span> id;
+    <span class="kw">private boolean</span> inUse;
+
+    <span class="ty">Connection</span>(<span class="kw">int</span> id) { <span class="kw">this</span>.id = id; }
+
+    <span class="kw">public</span> <span class="ty">String</span> toString() {
+        <span class="kw">return</span> <span class="st">"Connection-"</span> + id;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Fields &amp; Constructor</h2><span class="tag">pool setup</span></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">BlockingQueue</span>&lt;<span class="ty">Connection</span>&gt; pool;
+<span class="kw">private final</span> <span class="ty">Semaphore</span> semaphore;
+
+<span class="kw">public</span> <span class="ty">ConnectionPool</span>(<span class="kw">int</span> size) {
+    pool = <span class="kw">new</span> <span class="ty">LinkedBlockingQueue</span>&lt;&gt;(size);
+    semaphore = <span class="kw">new</span> <span class="ty">Semaphore</span>(size);
+
+    <span class="cm">// Pre-create all connections</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">1</span>; i &lt;= size; i++) {
+        pool.offer(<span class="kw">new</span> <span class="ty">Connection</span>(i));
+    }
+}</pre>
+        <div class="callout info"><b>Semaphore(size)</b> — Starts with <code>size</code> permits. Each <code>getConnection()</code> consumes one, each <code>releaseConnection()</code> returns one. When permits reach 0, <code>acquire()</code> blocks.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>getConnection() — Borrow</h2><span class="tag">acquire + poll</span></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">Connection</span> getConnection() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    semaphore.acquire();          <span class="cm">// blocks if no permits available</span>
+    <span class="ty">Connection</span> conn = pool.poll();  <span class="cm">// take from queue (guaranteed non-empty)</span>
+    <span class="kw">return</span> conn;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>releaseConnection(conn) — Return</h2><span class="tag">offer + release</span></div>
+<pre class="code"><span class="kw">public void</span> releaseConnection(<span class="ty">Connection</span> conn) {
+    pool.offer(conn);       <span class="cm">// return connection to queue</span>
+    semaphore.release();    <span class="cm">// give back permit (wakes blocked thread)</span>
+}</pre>
+        <div class="callout tip"><b>Order: offer then release.</b> If you release first, another thread's <code>acquire()</code> succeeds but <code>pool.poll()</code> might return null (the connection hasn't been offered yet). Offer first guarantees the queue is non-empty when the next thread polls.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.ConnectionPool</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/ConnectionPool.java</code> (62 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>getConnection()</code></td><td class="o1">O(1)</td><td>Semaphore acquire (CAS) + queue poll — both constant time</td></tr>
+            <tr><td><code>releaseConnection()</code></td><td class="o1">O(1)</td><td>Queue offer + semaphore release — both constant time</td></tr>
+            <tr><td>Space</td><td>O(size)</td><td>Fixed number of pre-created Connection objects</td></tr>
+            <tr><td>Blocking</td><td>Indefinite</td><td><code>acquire()</code> blocks until a permit is available</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Health checks?</h3></div>
+            <div class="c-body">
+              <p>Before returning a connection from <code>getConnection()</code>, validate it (e.g., send a ping/SELECT 1). If invalid, discard it, create a new one, and offer it instead. HikariCP does this with <code>connectionTestQuery</code> or JDBC <code>isValid()</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Idle timeout eviction?</h3></div>
+            <div class="c-body">
+              <p>Track <code>lastUsedTime</code> on each connection. A background thread periodically scans the pool and closes connections idle beyond a threshold. This prevents holding stale connections that the database may have already closed (firewall timeouts, server-side idle limits).</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Connection validation on borrow?</h3></div>
+            <div class="c-body">
+              <p>Two strategies: <b>test-on-borrow</b> (validate every get — safe but adds latency) vs <b>test-while-idle</b> (background validation — less overhead, small window for stale). HikariCP uses a hybrid: fast <code>Connection.isValid()</code> check on borrow with a configurable timeout. DBCP uses <code>validationQuery</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>HikariCP internals?</h3></div>
+            <div name="c-body" class="c-body">
+              <p>HikariCP uses <code>ConcurrentBag</code> — a lock-free, thread-local–friendly data structure. Each thread tries its <b>thread-local list</b> first (cache-friendly, no contention), then falls back to a shared <code>CopyOnWriteArrayList</code>, then creates a new connection if under max. It's the fastest Java pool because it minimizes CAS contention and avoids <code>synchronized</code> entirely.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Semaphore + BlockingQueue Deep Dive</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 700 200" width="700" height="200">
+            <defs>
+              <marker id="arr3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/></marker>
+            </defs>
+
+            <text x="20" y="18" font-size="11" font-weight="bold" fill="#fb7185">Pool size = 3: Lifecycle of permits and connections</text>
+
+            <!-- State 1: All idle -->
+            <rect x="20" y="35" width="140" height="55" rx="6" class="node-hl"/>
+            <text x="90" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">Initial State</text>
+            <text x="90" y="68" text-anchor="middle" font-size="9" fill="#b8c1cc">permits=3, queue=[C1,C2,C3]</text>
+            <text x="90" y="82" text-anchor="middle" font-size="9" fill="#4ade80">all idle</text>
+
+            <line x1="160" y1="62" x2="200" y2="62" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr3)"/>
+            <text x="180" y="55" text-anchor="middle" font-size="8" fill="#a78bfa">get()</text>
+
+            <!-- State 2: One borrowed -->
+            <rect x="210" y="35" width="140" height="55" rx="6" class="node-box"/>
+            <text x="280" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#e6edf3">1 Borrowed</text>
+            <text x="280" y="68" text-anchor="middle" font-size="9" fill="#b8c1cc">permits=2, queue=[C2,C3]</text>
+            <text x="280" y="82" text-anchor="middle" font-size="9" fill="#fbbf24">C1 in use</text>
+
+            <line x1="350" y1="62" x2="390" y2="62" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr3)"/>
+            <text x="370" y="55" text-anchor="middle" font-size="8" fill="#a78bfa">get() ×2</text>
+
+            <!-- State 3: All borrowed -->
+            <rect x="400" y="35" width="140" height="55" rx="6" style="fill:rgba(248,113,113,.1);stroke:var(--warn);stroke-width:1.5"/>
+            <text x="470" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#f87171">All Borrowed</text>
+            <text x="470" y="68" text-anchor="middle" font-size="9" fill="#b8c1cc">permits=0, queue=[]</text>
+            <text x="470" y="82" text-anchor="middle" font-size="9" fill="#f87171">next get() BLOCKS</text>
+
+            <line x1="540" y1="62" x2="575" y2="62" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-ok)"/>
+            <text x="558" y="55" text-anchor="middle" font-size="8" fill="#4ade80">release()</text>
+
+            <!-- State 4: One returned -->
+            <rect x="585" y="35" width="100" height="55" rx="6" class="node-hl"/>
+            <text x="635" y="52" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">1 Returned</text>
+            <text x="635" y="68" text-anchor="middle" font-size="9" fill="#b8c1cc">permits=1</text>
+            <text x="635" y="82" text-anchor="middle" font-size="9" fill="#4ade80">unblocks waiter</text>
+
+            <!-- Bottom summary -->
+            <text x="350" y="120" text-anchor="middle" font-size="10" fill="#b8c1cc">Semaphore ensures: borrowed ≤ pool size (invariant)</text>
+            <text x="350" y="140" text-anchor="middle" font-size="10" fill="#b8c1cc">BlockingQueue ensures: idle connections stored thread-safely</text>
+            <text x="350" y="160" text-anchor="middle" font-size="10" fill="#fbbf24">Together: no synchronized blocks needed</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Connection leak</b> — If a client forgets to call <code>releaseConnection()</code>, a permit is permanently lost → pool size effectively shrinks. Use try-finally or try-with-resources (<code>AutoCloseable</code>) to guarantee release.</div>
+        <div class="callout"><b>Release order matters</b> — <code>offer(conn)</code> before <code>release()</code>. Otherwise a woken thread may poll an empty queue. This is a subtle race condition.</div>
+        <div class="callout tip"><b>Try-with-resources</b> — Make Connection implement <code>AutoCloseable</code> where <code>close()</code> calls <code>pool.releaseConnection(this)</code>. Then clients can write <code>try (var conn = pool.getConnection()) { ... }</code> — leak-proof.</div>
+        <div class="callout"><b>Fairness</b> — <code>new Semaphore(size, true)</code> uses a fair queue (FIFO). Without fairness, a thread that releases and immediately re-acquires can starve waiting threads. Fair semaphore has slightly higher overhead due to ordered queue.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/ConnectionPool.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

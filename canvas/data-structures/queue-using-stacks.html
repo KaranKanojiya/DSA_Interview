@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-05 · Queue Using Two Stacks — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> Queue Using Stacks</div>
+
+  <header class="hero">
+    <h1>Queue Using Two Stacks — Implement from Scratch</h1>
+    <div class="sub">Two stacks: <b>pushStack</b> (enqueue) + <b>popStack</b> (dequeue). Transfer on empty popStack reverses order for FIFO. Each element is pushed and popped at most twice → <b>amortized O(1)</b>. A classic interview question testing stack ↔ queue duality. LeetCode #232.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">LeetCode #232</span>
+      <span class="badge">Amazon · Google · Microsoft · Meta</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">enqueue</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">dequeue</span> <span class="val o1">O(1) amort.</span></span>
+      <span class="cx"><span class="label">peek</span> <span class="val o1">O(1) amort.</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>The Two-Stack Trick</h3>
+            <p>A stack is LIFO, a queue is FIFO. Reversing the order of a stack gives FIFO. Use <b>two stacks</b>:</p>
+            <ul class="tight">
+              <li><b>pushStack</b> — all enqueue operations go here</li>
+              <li><b>popStack</b> — all dequeue/peek operations come from here</li>
+              <li>When popStack is empty, <b>transfer</b> all elements from pushStack → popStack (reverses order)</li>
+            </ul>
+            <p class="muted">The transfer makes the oldest element (first enqueued) land on top of popStack — FIFO order restored.</p>
+          </div>
+          <div class="card">
+            <h3>Why Amortized O(1)?</h3>
+            <p>Each element goes through exactly <b>4 operations</b> in its lifetime:</p>
+            <ol class="tight">
+              <li>Push onto pushStack — O(1)</li>
+              <li>Pop from pushStack (during transfer) — O(1)</li>
+              <li>Push onto popStack (during transfer) — O(1)</li>
+              <li>Pop from popStack (dequeue) — O(1)</li>
+            </ol>
+            <p>Total: <b>4 operations per element</b>, all O(1). Even though a single transfer is O(k), each element is only transferred once → amortized O(1) per dequeue.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>The Transfer — Visualized</h2></div>
+        <div class="viz">
+          <svg width="700" height="230">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-ok" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+
+            <!-- BEFORE label -->
+            <text x="10" y="16" font-size="12" font-weight="600" fill="#fbbf24">BEFORE transfer</text>
+
+            <!-- pushStack (before) -->
+            <text x="80" y="38" text-anchor="middle" font-size="11" fill="#2dd4bf">pushStack</text>
+            <rect x="40" y="130" width="80" height="30" rx="6" class="node-hl"/>
+            <text x="80" y="150" text-anchor="middle" font-size="12" font-weight="600" fill="#2dd4bf">1</text>
+            <text x="128" y="150" font-size="9" fill="#8b95a3">bottom (oldest)</text>
+            <rect x="40" y="97" width="80" height="30" rx="6" class="node-box"/>
+            <text x="80" y="117" text-anchor="middle" font-size="12" fill="#b8c1cc">2</text>
+            <rect x="40" y="64" width="80" height="30" rx="6" class="node-box"/>
+            <text x="80" y="84" text-anchor="middle" font-size="12" fill="#b8c1cc">3</text>
+            <rect x="40" y="42" width="80" height="30" rx="6" class="node-box"/>
+            <text x="80" y="62" text-anchor="middle" font-size="12" fill="#b8c1cc">4</text>
+            <text x="128" y="62" font-size="9" fill="#8b95a3">top (newest)</text>
+
+            <!-- popStack (before) - empty -->
+            <text x="260" y="38" text-anchor="middle" font-size="11" fill="#fbbf24">popStack</text>
+            <rect x="220" y="130" width="80" height="30" rx="6" class="dummy"/>
+            <text x="260" y="150" text-anchor="middle" font-size="11" fill="#8b95a3">empty</text>
+
+            <!-- Transfer arrow -->
+            <path d="M340,90 C380,50 380,130 420,90" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arr-ok)"/>
+            <text x="380" y="70" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">transfer()</text>
+            <text x="380" y="130" text-anchor="middle" font-size="10" fill="#8b95a3">pop all from push</text>
+            <text x="380" y="144" text-anchor="middle" font-size="10" fill="#8b95a3">push each to pop</text>
+
+            <!-- AFTER label -->
+            <text x="430" y="16" font-size="12" font-weight="600" fill="#4ade80">AFTER transfer</text>
+
+            <!-- pushStack (after) - empty -->
+            <text x="490" y="38" text-anchor="middle" font-size="11" fill="#2dd4bf">pushStack</text>
+            <rect x="450" y="130" width="80" height="30" rx="6" class="dummy"/>
+            <text x="490" y="150" text-anchor="middle" font-size="11" fill="#8b95a3">empty</text>
+
+            <!-- popStack (after) - reversed -->
+            <text x="630" y="38" text-anchor="middle" font-size="11" fill="#fbbf24">popStack</text>
+            <rect x="590" y="130" width="80" height="30" rx="6" class="node-box"/>
+            <text x="630" y="150" text-anchor="middle" font-size="12" fill="#b8c1cc">4</text>
+            <rect x="590" y="97" width="80" height="30" rx="6" class="node-box"/>
+            <text x="630" y="117" text-anchor="middle" font-size="12" fill="#b8c1cc">3</text>
+            <rect x="590" y="64" width="80" height="30" rx="6" class="node-box"/>
+            <text x="630" y="84" text-anchor="middle" font-size="12" fill="#b8c1cc">2</text>
+            <rect x="590" y="42" width="80" height="30" rx="6" class="node-hl"/>
+            <text x="630" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#2dd4bf">1</text>
+            <text x="582" y="62" text-anchor="end" font-size="9" fill="#4ade80">top ← dequeue this first (FIFO!)</text>
+
+            <!-- Bottom annotation -->
+            <text x="350" y="195" text-anchor="middle" font-size="11" fill="#4ade80">Order reversed: 1 is now on top → FIFO order achieved</text>
+            <text x="350" y="215" text-anchor="middle" font-size="10" fill="#8b95a3">Next dequeue() just pops from popStack — no transfer needed until popStack is empty again</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--ds)">enqueue(value)</h3>
+            <ol class="tight">
+              <li>Push value onto pushStack</li>
+              <li>Done — always O(1)</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">dequeue()</h3>
+            <ol class="tight">
+              <li>If popStack is empty → <code>transfer()</code></li>
+              <li>If still empty → throw (queue is empty)</li>
+              <li>Pop from popStack and return</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--conc)">peek()</h3>
+            <ol class="tight">
+              <li>Same as dequeue but use <code>peek()</code> on popStack</li>
+              <li>Element stays on the stack</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--design)">transfer()</h3>
+            <ol class="tight">
+              <li>While pushStack not empty:</li>
+              <li>&nbsp;&nbsp;Pop from pushStack</li>
+              <li>&nbsp;&nbsp;Push onto popStack</li>
+              <li>Reverses order — O(k) for k elements</li>
+            </ol>
+          </div>
+        </div>
+        <div class="callout tip" style="margin-top:12px"><b>Transfer only when popStack is empty.</b> This is the key optimization. Don't transfer on every dequeue — only when needed. This ensures each element is transferred at most once.</div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields</h2><span class="tag">two stacks</span></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Deque</span>&lt;<span class="ty">E</span>&gt; pushStack = <span class="kw">new</span> <span class="ty">ArrayDeque</span>&lt;&gt;();  <span class="cm">// enqueue here</span>
+<span class="kw">private final</span> <span class="ty">Deque</span>&lt;<span class="ty">E</span>&gt; popStack  = <span class="kw">new</span> <span class="ty">ArrayDeque</span>&lt;&gt;();  <span class="cm">// dequeue from here</span></pre>
+        <div class="callout info" style="margin-top:8px"><b>ArrayDeque vs Stack:</b> Java's <code>Stack</code> class is legacy and synchronized. <code>ArrayDeque</code> is the recommended stack implementation — faster, no locking overhead, and resizable.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>enqueue(value) — O(1)</h2><span class="tag">always constant</span></div>
+<pre class="code"><span class="kw">public void</span> enqueue(<span class="ty">E</span> value) {
+    pushStack.push(value);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>dequeue() — O(1) amortized</h2><span class="tag">FIFO</span></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">E</span> dequeue() {
+    <span class="kw">if</span> (popStack.isEmpty()) transfer();
+    <span class="kw">if</span> (popStack.isEmpty())
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"Queue is empty"</span>);
+    <span class="kw">return</span> popStack.pop();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>peek() — O(1) amortized</h2><span class="tag">front element</span></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">E</span> peek() {
+    <span class="kw">if</span> (popStack.isEmpty()) transfer();
+    <span class="kw">if</span> (popStack.isEmpty())
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"Queue is empty"</span>);
+    <span class="kw">return</span> popStack.peek();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>transfer() — The Reversal Engine</h2><span class="tag">O(k) batch</span></div>
+<pre class="code"><span class="cm">// Move all from pushStack → popStack</span>
+<span class="cm">// Reverses order: LIFO → FIFO</span>
+<span class="kw">private void</span> transfer() {
+    <span class="kw">while</span> (!pushStack.isEmpty()) {
+        popStack.push(pushStack.pop());
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Utilities</h2><span class="tag">helpers</span></div>
+<pre class="code"><span class="kw">public boolean</span> isEmpty() {
+    <span class="kw">return</span> pushStack.isEmpty() &amp;&amp; popStack.isEmpty();
+}
+
+<span class="kw">public int</span> size() {
+    <span class="kw">return</span> pushStack.size() + popStack.size();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">7</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.QueueUsingStacks</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/QueueUsingStacks.java</code> (66 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>enqueue(val)</code></td><td><span class="o1">O(1)</span></td><td>Push onto pushStack — always constant</td></tr>
+            <tr><td><code>dequeue()</code></td><td><span class="o1">O(1) amort.</span></td><td>Pop from popStack. Transfer is O(k) but each element transferred at most once</td></tr>
+            <tr><td><code>peek()</code></td><td><span class="o1">O(1) amort.</span></td><td>Same as dequeue — lazy transfer</td></tr>
+            <tr><td><code>transfer()</code></td><td><span class="on">O(k)</span></td><td>Move k elements. But amortized across all dequeues = O(1) each</td></tr>
+            <tr><td>Space</td><td>O(n)</td><td>All n elements spread across two stacks</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Stack using two Queues?</h3></div>
+            <div class="c-body">
+              <p>The reverse problem (LeetCode #225). <b>Approach 1:</b> Make push O(n) — on push, enqueue to q2, then move all from q1 to q2, swap q1/q2. <b>Approach 2:</b> Make pop O(n) — on pop, move n-1 elements to q2, dequeue last one, swap. Both work, but less elegant than queue-from-stacks.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Circular Queue (bounded)</h3></div>
+            <div class="c-body">
+              <p>Fixed-size array with <code>head</code> and <code>tail</code> indices that wrap around using <code>% capacity</code>. All operations O(1) worst case. LeetCode #622. Useful for BFS, producer-consumer buffers, and ring buffers in networking.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Priority Queue?</h3></div>
+            <div class="c-body">
+              <p>Not FIFO — elements are dequeued by priority (min or max). Backed by a <b>binary heap</b>. Insert O(log n), extract-min O(log n). Used in Dijkstra's, Huffman coding, task scheduling. Java's <code>PriorityQueue</code> uses a min-heap.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Can you make both operations O(1) worst case?</h3></div>
+            <div class="c-body">
+              <p>Not with stacks alone — you need a true queue (linked list or circular array) for O(1) worst case on both enqueue and dequeue. The two-stack approach inherently has worst-case O(n) dequeue (during transfer), but <b>amortized</b> O(1) is achievable.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Empty dequeue</b> — Must check BOTH stacks are empty before throwing. If only pushStack is checked, you'll miss elements sitting in popStack. The two-check pattern (<code>if empty → transfer, if still empty → throw</code>) handles this correctly.</div>
+        <div class="callout"><b>Interleaved operations</b> — Enqueue 3 items, dequeue 1, enqueue 2 more, dequeue 3. The implementation handles this correctly because transfer only happens when popStack is empty — remaining elements in popStack are already in correct FIFO order.</div>
+        <div class="callout tip"><b>Don't transfer eagerly</b> — A common mistake is transferring on every dequeue/peek. This makes dequeue O(n) every time instead of amortized O(1). Only transfer when popStack is empty.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/QueueUsingStacks.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

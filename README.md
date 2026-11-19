@@ -91,6 +91,28 @@ java --enable-preview -cp target/classes dsa.cache.LRUCache
 
 ---
 
+## Interactive Study Canvases (36)
+
+Each implementation has a companion **HTML study canvas** — open `canvas/index.html` in a browser or Cursor Live Preview.
+
+Every canvas has **3 tabs**: **Concept** (diagrams, operations walkthrough), **Implementation** (annotated code), **Interview** (complexity table, follow-ups, edge cases).
+
+```
+canvas/
+├── index.html                 Hub — 36 clickable tiles, 5 categories
+├── assets/canvas.css          Shared dark-theme design system
+├── assets/canvas.js           Tab switching, collapsibles, interactive simulators
+├── cache/          (4)        LRU (interactive simulator), LFU (interactive simulator), TTL, Write-Through
+├── data-structures/(10)       HashMap, LinkedList, ArrayList, Stack, Queue, Deque, MinHeap, Trie, BST, Graph
+├── concurrency/    (7)        ThreadPool, BlockingQueue, RWLock, RateLimiter, ProducerConsumer, Latch, Semaphore
+├── design/         (8)        BSTIterator, Observer, PubSub, ConnPool, Logger, ConsistentHashing, EventBus, CompletableFuture
+└── algorithms/     (7)        MergeSort, QuickSort, StringBuilder, CustomComparator, atoi, StreamOps, ImmutableBuilder
+```
+
+**Features:** SVG architecture diagrams, syntax-highlighted Java code, interactive cache simulators (LRU/LFU), collapsible follow-up cards, responsive grid layout.
+
+---
+
 ## Project Structure
 
 ```

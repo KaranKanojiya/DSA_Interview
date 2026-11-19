@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-08 · CompletableFuture — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> CompletableFuture</div>
+
+  <header class="hero">
+    <h1>CompletableFuture — Implement from Scratch</h1>
+    <div class="sub">A <b>container for an async result</b> that may not be available yet. <code>complete(value)</code> sets the result, notifies waiters, and runs chained callbacks. <code>get()</code> blocks until completed. <code>thenApply(fn)</code> chains transformations — runs immediately if already completed, else queues the callback for later.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">Google · Amazon</span>
+      <span class="badge">~82 lines</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">complete()</span> <span class="val o1">O(C)</span></span>
+      <span class="cx"><span class="label">get()</span> <span class="val o1">O(1) amortized</span></span>
+      <span class="cx"><span class="label">thenApply()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(C)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a CompletableFuture?</h3>
+            <p>A <b>promise</b> — a placeholder for a value that will be available later. A producer calls <code>complete(value)</code> when the result is ready. Consumers either block with <code>get()</code> or chain transformations with <code>thenApply(fn)</code>.</p>
+            <p class="muted">Similar to JavaScript's Promise, Scala's Future, or Python's asyncio.Future.</p>
+          </div>
+          <div class="card">
+            <h3>Key Design Decisions</h3>
+            <ul class="tight">
+              <li><b>complete()</b> — sets value, wakes blocked threads, runs all queued callbacks</li>
+              <li><b>get()</b> — blocks via <code>wait()</code> until completed</li>
+              <li><b>thenApply(fn)</b> — if done: run fn immediately; else: queue for later</li>
+              <li><b>completeExceptionally()</b> — error path propagation</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Lifecycle Diagram</h2></div>
+        <div class="flow">
+          <div class="step design"><div class="box">Pending</div><small>created, no value<br>get() blocks</small></div>
+          <div class="step design"><div class="box">complete(val)</div><small>producer sets result<br>notifyAll()</small></div>
+          <div class="step design"><div class="box">Run Callbacks</div><small>thenApply chain<br>executes in order</small></div>
+          <div class="step" style="flex:0.6"><div class="box" style="border-color:var(--ok);color:var(--ok)">Completed</div><small>get() returns<br>immediately</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg viewBox="0 0 740 310" width="740" height="310">
+            <defs>
+              <marker id="arr-cf" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+              <marker id="arr-cf-g" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+              <marker id="arr-cf-m" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+            </defs>
+            <!-- Future box -->
+            <rect x="220" y="15" width="300" height="130" rx="10" fill="rgba(251,113,133,.06)" stroke="#fb7185" stroke-width="2"/>
+            <text x="370" y="38" text-anchor="middle" font-size="13" font-weight="bold" fill="#fb7185">MyCompletableFuture&lt;T&gt;</text>
+            <!-- Internal state -->
+            <rect x="240" y="50" width="120" height="35" rx="6" class="node-box"/>
+            <text x="300" y="72" text-anchor="middle" font-size="10" fill="#b8c1cc">T result</text>
+            <rect x="380" y="50" width="120" height="35" rx="6" class="node-box"/>
+            <text x="440" y="72" text-anchor="middle" font-size="10" fill="#b8c1cc">boolean completed</text>
+            <rect x="240" y="98" width="260" height="35" rx="6" class="node-box"/>
+            <text x="370" y="120" text-anchor="middle" font-size="10" fill="#b8c1cc">List&lt;Function&lt;T, ?&gt;&gt; callbacks</text>
+            <!-- Producer (left) -->
+            <rect x="15" y="40" width="140" height="55" rx="8" fill="rgba(167,139,250,.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="85" y="62" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">Producer</text>
+            <text x="85" y="79" text-anchor="middle" font-size="10" fill="#b8c1cc">complete(value)</text>
+            <line x1="155" y1="67" x2="215" y2="67" stroke="#a78bfa" stroke-width="2" marker-end="url(#arr-cf)"/>
+            <!-- Consumer (left bottom) -->
+            <rect x="15" y="120" width="140" height="55" rx="8" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="85" y="142" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Consumer</text>
+            <text x="85" y="159" text-anchor="middle" font-size="10" fill="#b8c1cc">get() — blocks</text>
+            <line x1="155" y1="147" x2="215" y2="100" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-cf-g)"/>
+            <!-- thenApply chain (bottom) -->
+            <text x="370" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#fb7185">thenApply() Chaining</text>
+            <!-- Future 1 -->
+            <rect x="40" y="200" width="150" height="70" rx="8" fill="rgba(251,113,133,.08)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="115" y="222" text-anchor="middle" font-size="11" font-weight="600" fill="#fb7185">Future&lt;String&gt;</text>
+            <text x="115" y="240" text-anchor="middle" font-size="10" fill="#b8c1cc">result = "hello"</text>
+            <text x="115" y="258" text-anchor="middle" font-size="9" fill="#4ade80">completed</text>
+            <!-- Arrow -->
+            <line x1="190" y1="235" x2="235" y2="235" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-cf)"/>
+            <text x="213" y="225" text-anchor="middle" font-size="9" fill="#fb7185">thenApply</text>
+            <!-- Future 2 -->
+            <rect x="240" y="200" width="150" height="70" rx="8" fill="rgba(251,113,133,.08)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="315" y="222" text-anchor="middle" font-size="11" font-weight="600" fill="#fb7185">Future&lt;String&gt;</text>
+            <text x="315" y="240" text-anchor="middle" font-size="10" fill="#b8c1cc">s.toUpperCase()</text>
+            <text x="315" y="258" text-anchor="middle" font-size="10" fill="#fbbf24">"HELLO"</text>
+            <!-- Arrow -->
+            <line x1="390" y1="235" x2="435" y2="235" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-cf)"/>
+            <text x="413" y="225" text-anchor="middle" font-size="9" fill="#fb7185">thenApply</text>
+            <!-- Future 3 -->
+            <rect x="440" y="200" width="150" height="70" rx="8" fill="rgba(74,222,128,.08)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="515" y="222" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Future&lt;Integer&gt;</text>
+            <text x="515" y="240" text-anchor="middle" font-size="10" fill="#b8c1cc">s.length()</text>
+            <text x="515" y="258" text-anchor="middle" font-size="10" fill="#4ade80">5</text>
+            <!-- get() at end -->
+            <line x1="590" y1="235" x2="635" y2="235" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-cf-g)"/>
+            <rect x="640" y="210" width="85" height="50" rx="6" fill="rgba(74,222,128,.12)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="682" y="232" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">get()</text>
+            <text x="682" y="248" text-anchor="middle" font-size="10" fill="#b8c1cc">returns 5</text>
+            <!-- Note -->
+            <text x="370" y="300" text-anchor="middle" font-size="10" fill="#8b95a3">Each thenApply returns a new Future — composable pipeline</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>thenApply — Two Scenarios</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--ok)">Already completed</h3>
+            <ol class="tight">
+              <li>Check <code>completed == true</code></li>
+              <li>Apply <code>fn</code> to result immediately</li>
+              <li><code>next.complete(fn.apply(result))</code></li>
+              <li>Return the already-completed <code>next</code> future</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">Not yet completed</h3>
+            <ol class="tight">
+              <li>Check <code>completed == false</code></li>
+              <li>Add <code>fn</code> to the callbacks list</li>
+              <li>When <code>complete()</code> is later called, it runs <code>fn</code></li>
+              <li>Return <code>next</code> future (will be completed later)</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--design)">complete(value)</h3>
+            <ol class="tight">
+              <li>Check not already completed (else throw)</li>
+              <li>Set <code>result = value</code>, <code>completed = true</code></li>
+              <li><code>notifyAll()</code> — wake all <code>get()</code> waiters</li>
+              <li>Iterate callbacks: <code>cb.apply(value)</code></li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--design)">get() — blocking</h3>
+            <ol class="tight">
+              <li><code>while (!completed) wait()</code></li>
+              <li>If error was set → throw the exception</li>
+              <li>Return the result value</li>
+              <li>Subsequent calls return immediately</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields — State Container</h2><span class="tag">generic</span></div>
+        <p class="muted">Stores the result (or error), completion flag, and a list of queued callbacks for thenApply chains.</p>
+<pre class="code"><span class="kw">public class</span> <span class="ty">MyCompletableFuture</span>&lt;<span class="ty">T</span>&gt; {
+
+    <span class="kw">private</span> <span class="ty">T</span> result;
+    <span class="kw">private</span> <span class="ty">Exception</span> error;
+    <span class="kw">private boolean</span> completed = <span class="kw">false</span>;
+    <span class="kw">private final</span> <span class="ty">List</span>&lt;<span class="ty">Function</span>&lt;<span class="ty">T</span>, ?&gt;&gt; callbacks = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>complete(value) — Set Result &amp; Notify</h2><span class="tag">producer side</span></div>
+<pre class="code"><span class="kw">public synchronized void</span> complete(<span class="ty">T</span> value) {
+    <span class="kw">if</span> (completed) <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"Already completed"</span>);
+    <span class="kw">this</span>.result = value;
+    <span class="kw">this</span>.completed = <span class="kw">true</span>;
+    notifyAll();                        <span class="cm">// wake all get() waiters</span>
+    <span class="kw">for</span> (<span class="ty">Function</span>&lt;<span class="ty">T</span>, ?&gt; cb : callbacks) {
+        cb.apply(value);                <span class="cm">// run queued thenApply callbacks</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>completeExceptionally(error)</h2><span class="tag">error path</span></div>
+<pre class="code"><span class="kw">public synchronized void</span> completeExceptionally(<span class="ty">Exception</span> error) {
+    <span class="kw">this</span>.error = error;
+    <span class="kw">this</span>.completed = <span class="kw">true</span>;
+    notifyAll();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>get() — Block Until Complete</h2><span class="tag">consumer side</span></div>
+<pre class="code"><span class="kw">public synchronized</span> <span class="ty">T</span> get() <span class="kw">throws</span> <span class="ty">Exception</span> {
+    <span class="kw">while</span> (!completed) {
+        wait();                         <span class="cm">// release monitor, sleep</span>
+    }
+    <span class="kw">if</span> (error != <span class="kw">null</span>) <span class="kw">throw</span> error;     <span class="cm">// propagate exception</span>
+    <span class="kw">return</span> result;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>thenApply(fn) — Chain Transformations</h2><span class="tag">monadic compose</span></div>
+        <p class="muted">Returns a new future. If already completed, applies fn and completes the new future immediately. Otherwise, queues a callback that will complete the new future when this one completes.</p>
+<pre class="code"><span class="ann">@SuppressWarnings("unchecked")</span>
+<span class="kw">public</span> &lt;<span class="ty">U</span>&gt; <span class="ty">MyCompletableFuture</span>&lt;<span class="ty">U</span>&gt; thenApply(<span class="ty">Function</span>&lt;<span class="ty">T</span>, <span class="ty">U</span>&gt; fn) {
+    <span class="ty">MyCompletableFuture</span>&lt;<span class="ty">U</span>&gt; next = <span class="kw">new</span> <span class="ty">MyCompletableFuture</span>&lt;&gt;();
+    <span class="kw">synchronized</span> (<span class="kw">this</span>) {
+        <span class="kw">if</span> (completed) {
+            <span class="cm">// Already done — apply immediately</span>
+            <span class="kw">try</span> { next.complete(fn.apply(result)); }
+            <span class="kw">catch</span> (<span class="ty">Exception</span> e) { next.completeExceptionally(e); }
+        } <span class="kw">else</span> {
+            <span class="cm">// Not done — queue callback for later</span>
+            callbacks.add(val -&gt; {
+                <span class="kw">try</span> { next.complete(fn.apply((<span class="ty">T</span>) val)); }
+                <span class="kw">catch</span> (<span class="ty">Exception</span> e) { next.completeExceptionally(e); }
+                <span class="kw">return null</span>;
+            });
+        }
+    }
+    <span class="kw">return</span> next;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.MyCompletableFuture</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/MyCompletableFuture.java</code> (82 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>complete(value)</code></td><td>O(C)</td><td>Sets result + notifies + runs C queued callbacks</td></tr>
+            <tr><td><code>get()</code></td><td class="o1">O(1) amortized</td><td>If already complete: immediate return. Otherwise: wait + wake.</td></tr>
+            <tr><td><code>thenApply(fn)</code></td><td class="o1">O(1)</td><td>Either applies fn immediately or appends to callback list</td></tr>
+            <tr><td><code>completeExceptionally()</code></td><td class="o1">O(1)</td><td>Sets error flag + notifyAll — constant</td></tr>
+            <tr><td>Space</td><td>O(C)</td><td>C = number of queued callbacks</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:6px">C = number of thenApply callbacks chained before completion.</p>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>thenCompose (flatMap)?</h3></div>
+            <div class="c-body">
+              <p><code>thenApply</code> transforms <code>T → U</code>. <code>thenCompose</code> transforms <code>T → Future&lt;U&gt;</code> and flattens — avoids <code>Future&lt;Future&lt;U&gt;&gt;</code>. Like <code>flatMap</code> in streams. Implementation: when the first future completes, call fn to get a new future, then chain the inner future's completion to the outer next future.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>thenCombine (join 2 futures)?</h3></div>
+            <div class="c-body">
+              <p>Waits for <b>two</b> futures to complete, then combines their results with a BiFunction. Implementation: both futures register a callback. Each callback checks if the <b>other</b> is also complete. When both are done, apply the combine function and complete the result future. Use <code>AtomicInteger</code> to count completions.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>exceptionally (error handler)?</h3></div>
+            <div class="c-body">
+              <p>Catches exceptions from upstream futures and provides a fallback value. Like <code>.catch()</code> in JavaScript Promises. Implementation: return a new future. If this future completes normally, pass through. If exceptionally, apply the error handler function and complete the next future with its return value.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>allOf / anyOf?</h3></div>
+            <div class="c-body">
+              <p><b>allOf</b>: returns a future that completes when ALL input futures complete. Use <code>AtomicInteger</code> countdown. <b>anyOf</b>: completes when the FIRST input future completes. Each input registers a callback that completes the result (subsequent calls are no-ops since <code>complete()</code> throws on double-complete). Race pattern.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>CompletionStage interface?</h3></div>
+            <div class="c-body">
+              <p>Java's <code>CompletionStage</code> interface defines the full API: <code>thenApply</code>, <code>thenCompose</code>, <code>thenCombine</code>, <code>thenAccept</code>, <code>thenRun</code>, <code>handle</code>, <code>exceptionally</code>, <code>whenComplete</code>. <code>CompletableFuture</code> implements it. Each method has <code>*Async</code> variants that run on a thread pool (default: ForkJoinPool.commonPool).</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Double complete</b> — Calling <code>complete()</code> twice must throw <code>IllegalStateException</code>. Without this check, the result could change after consumers have already read it. Java's <code>CompletableFuture</code> silently ignores the second call (returns false).</div>
+        <div class="callout"><b>thenApply before vs after complete</b> — The callback must work in both scenarios: (1) queued before completion → runs when complete() is called, (2) registered after completion → runs immediately. Both paths must be inside <code>synchronized</code> to avoid the race where complete() and thenApply() interleave.</div>
+        <div class="callout tip"><b>Error propagation in chains</b> — If <code>fn.apply()</code> throws in thenApply, the next future must be completed exceptionally (not silently swallowed). This ensures errors propagate through the chain, just like rejected Promises in JavaScript.</div>
+        <div class="callout info"><b>Callback runs on complete() thread</b> — All callbacks run synchronously on whichever thread calls <code>complete()</code>. A slow callback delays subsequent callbacks and the complete() caller. Java's real CompletableFuture offers <code>thenApplyAsync</code> to run on a separate thread pool.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>vs Java Built-in</h2></div>
+        <table>
+          <thead><tr><th>Feature</th><th>MyCompletableFuture</th><th>java.util.concurrent.CompletableFuture</th></tr></thead>
+          <tbody>
+            <tr><td>complete()</td><td style="color:var(--ok)">Yes — throws on double</td><td>Returns boolean (no throw)</td></tr>
+            <tr><td>thenApply / thenCompose</td><td>thenApply only</td><td>Full CompletionStage API</td></tr>
+            <tr><td>Async variants</td><td>No — sync only</td><td>*Async variants with Executor</td></tr>
+            <tr><td>Error handling</td><td>completeExceptionally only</td><td>exceptionally, handle, whenComplete</td></tr>
+            <tr><td>Combinators</td><td>None</td><td>allOf, anyOf, thenCombine</td></tr>
+            <tr><td>Implementation</td><td>synchronized + wait/notify</td><td>Lock-free (CAS on Treiber stack of callbacks)</td></tr>
+            <tr><td style="color:var(--ok)">Interview value</td><td style="color:var(--ok)">High — shows async understanding</td><td>Low — just an import</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/MyCompletableFuture.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

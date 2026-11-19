@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-07 · Event Bus — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> Event Bus</div>
+
+  <header class="hero">
+    <h1>Event Bus — Implement from Scratch</h1>
+    <div class="sub">In-process <b>event emitter</b> with <code>on(event, callback)</code>, <code>off(event, callback)</code>, <code>once(event, callback)</code>, and <code>emit(event, data)</code>. Uses <b>CopyOnWriteArrayList</b> for thread-safe iteration during dispatch. Synchronous emission — callbacks run on the emitter's thread.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Meta · Google · Amazon</span>
+      <span class="badge">~59 lines</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">on()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">emit()</span> <span class="val on">O(L)</span></span>
+      <span class="cx"><span class="label">off()</span> <span class="val on">O(L)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val on">O(E × L)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is an Event Bus?</h3>
+            <p>A <b>publish-subscribe</b> mechanism within a single process. Components register callbacks for named events (<code>on</code>). When an event is emitted, all registered callbacks are invoked synchronously with the provided data.</p>
+            <p class="muted">Decouples producers and consumers — the emitter doesn't know who's listening.</p>
+          </div>
+          <div class="card">
+            <h3>Key Operations</h3>
+            <ul class="tight">
+              <li><b>on(event, cb)</b> — register a persistent listener</li>
+              <li><b>once(event, cb)</b> — register a one-shot listener that auto-removes</li>
+              <li><b>off(event, cb)</b> — unsubscribe a specific callback</li>
+              <li><b>emit(event, data)</b> — fire event, invoke all listeners</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Event Bus Diagram</h2></div>
+        <div class="flow">
+          <div class="step design"><div class="box">Publisher</div><small>emit(event, data)<br>fires the event</small></div>
+          <div class="step design"><div class="box">Event Bus</div><small>Map&lt;event, List&lt;cb&gt;&gt;<br>dispatches to all</small></div>
+          <div class="step design"><div class="box">Subscribers</div><small>callbacks invoked<br>synchronously</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg viewBox="0 0 740 270" width="740" height="270">
+            <defs>
+              <marker id="arr-eb" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+              <marker id="arr-eb-g" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+              <marker id="arr-eb-m" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+            </defs>
+            <!-- Emitter -->
+            <rect x="15" y="85" width="130" height="55" rx="8" fill="rgba(251,113,133,.08)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="80" y="108" text-anchor="middle" font-size="12" font-weight="600" fill="#fb7185">Publisher</text>
+            <text x="80" y="125" text-anchor="middle" font-size="10" fill="#b8c1cc">emit("click", data)</text>
+            <!-- Arrow to bus -->
+            <line x1="145" y1="112" x2="215" y2="112" stroke="#fb7185" stroke-width="2" marker-end="url(#arr-eb)"/>
+            <!-- Event Bus -->
+            <rect x="220" y="20" width="260" height="220" rx="10" fill="rgba(251,113,133,.04)" stroke="#fb7185" stroke-width="2"/>
+            <text x="350" y="44" text-anchor="middle" font-size="13" font-weight="bold" fill="#fb7185">Event Bus</text>
+            <text x="350" y="62" text-anchor="middle" font-size="10" fill="#8b95a3">Map&lt;String, List&lt;Consumer&gt;&gt;</text>
+            <!-- "click" bucket -->
+            <rect x="240" y="78" width="220" height="70" rx="6" class="node-box"/>
+            <text x="260" y="96" font-size="10" font-weight="600" fill="#fbbf24">"click"</text>
+            <rect x="250" y="102" width="90" height="28" rx="5" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="1"/>
+            <text x="295" y="120" text-anchor="middle" font-size="9" fill="#4ade80">Listener 1</text>
+            <rect x="355" y="102" width="90" height="28" rx="5" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="1"/>
+            <text x="400" y="120" text-anchor="middle" font-size="9" fill="#4ade80">Listener 2</text>
+            <!-- "init" bucket -->
+            <rect x="240" y="160" width="220" height="65" rx="6" class="node-box"/>
+            <text x="260" y="178" font-size="10" font-weight="600" fill="#fbbf24">"init"</text>
+            <rect x="250" y="185" width="90" height="28" rx="5" fill="rgba(167,139,250,.12)" stroke="#a78bfa" stroke-width="1"/>
+            <text x="295" y="203" text-anchor="middle" font-size="9" fill="#a78bfa">Once wrapper</text>
+            <text x="365" y="203" font-size="9" fill="#8b95a3">(auto-removes)</text>
+            <!-- Arrows to subscribers -->
+            <line x1="480" y1="93" x2="540" y2="60" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-eb-g)"/>
+            <line x1="480" y1="115" x2="540" y2="115" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-eb-g)"/>
+            <line x1="480" y1="193" x2="540" y2="193" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <!-- Subscribers -->
+            <rect x="545" y="35" width="170" height="48" rx="8" fill="rgba(74,222,128,.08)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="630" y="56" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Subscriber A</text>
+            <text x="630" y="72" text-anchor="middle" font-size="9" fill="#b8c1cc">cb.accept(data)</text>
+            <rect x="545" y="95" width="170" height="48" rx="8" fill="rgba(74,222,128,.08)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="630" y="116" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Subscriber B</text>
+            <text x="630" y="132" text-anchor="middle" font-size="9" fill="#b8c1cc">cb.accept(data)</text>
+            <!-- once label -->
+            <rect x="545" y="173" width="170" height="48" rx="8" fill="rgba(167,139,250,.08)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="630" y="194" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">Once Listener</text>
+            <text x="630" y="210" text-anchor="middle" font-size="9" fill="#b8c1cc">fires once → off()</text>
+            <!-- CopyOnWrite note -->
+            <text x="350" y="258" text-anchor="middle" font-size="10" fill="#8b95a3">CopyOnWriteArrayList — safe to iterate while listeners are added/removed</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>once() — Self-Removing Wrapper</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 700 120" width="700" height="120">
+            <defs>
+              <marker id="arr-eb2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+            </defs>
+            <!-- Step 1 -->
+            <rect x="15" y="15" width="140" height="50" rx="8" fill="rgba(251,113,133,.08)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="85" y="36" text-anchor="middle" font-size="11" font-weight="600" fill="#fb7185">once(event, cb)</text>
+            <text x="85" y="52" text-anchor="middle" font-size="10" fill="#b8c1cc">creates wrapper</text>
+            <line x1="155" y1="40" x2="195" y2="40" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-eb2)"/>
+            <!-- Step 2 -->
+            <rect x="200" y="15" width="150" height="50" rx="8" fill="rgba(167,139,250,.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="275" y="36" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">wrapper.accept()</text>
+            <text x="275" y="52" text-anchor="middle" font-size="10" fill="#b8c1cc">calls cb.accept(data)</text>
+            <line x1="350" y1="40" x2="390" y2="40" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-eb2)"/>
+            <!-- Step 3 -->
+            <rect x="395" y="15" width="140" height="50" rx="8" fill="rgba(248,113,113,.08)" stroke="#f87171" stroke-width="1.5"/>
+            <text x="465" y="36" text-anchor="middle" font-size="11" font-weight="600" fill="#f87171">off(event, this)</text>
+            <text x="465" y="52" text-anchor="middle" font-size="10" fill="#b8c1cc">self-removes</text>
+            <line x1="535" y1="40" x2="575" y2="40" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-eb2)"/>
+            <!-- Result -->
+            <rect x="580" y="15" width="105" height="50" rx="8" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="632" y="36" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Done</text>
+            <text x="632" y="52" text-anchor="middle" font-size="10" fill="#b8c1cc">won't fire again</text>
+            <!-- Note -->
+            <text x="350" y="100" text-anchor="middle" font-size="10" fill="#8b95a3">The wrapper is an anonymous Consumer that references itself for self-removal</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--design)">on(event, cb)</h3>
+            <ol class="tight">
+              <li><code>computeIfAbsent</code> creates CopyOnWriteArrayList for new events</li>
+              <li>Add callback to the listener list</li>
+              <li>Callback persists until explicitly removed with <code>off()</code></li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--design)">emit(event, data)</h3>
+            <ol class="tight">
+              <li>Get listener list (or empty list via <code>getOrDefault</code>)</li>
+              <li>Iterate and call <code>cb.accept(data)</code> for each</li>
+              <li>Synchronous — runs on caller's thread</li>
+              <li>CopyOnWriteArrayList allows safe concurrent modification</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields — Listener Map</h2><span class="tag">state</span></div>
+        <p class="muted">A HashMap of event names to CopyOnWriteArrayList of Consumer callbacks. CopyOnWrite allows safe iteration during emit while listeners may be added/removed.</p>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">List</span>&lt;<span class="ty">Consumer</span>&lt;<span class="ty">Object</span>&gt;&gt;&gt; listeners = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>on(event, callback) — Subscribe</h2><span class="tag">register listener</span></div>
+<pre class="code"><span class="kw">public void</span> on(<span class="ty">String</span> event, <span class="ty">Consumer</span>&lt;<span class="ty">Object</span>&gt; callback) {
+    listeners
+        .computeIfAbsent(event, k -&gt; <span class="kw">new</span> <span class="ty">CopyOnWriteArrayList</span>&lt;&gt;())
+        .add(callback);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>off(event, callback) — Unsubscribe</h2><span class="tag">remove listener</span></div>
+<pre class="code"><span class="kw">public void</span> off(<span class="ty">String</span> event, <span class="ty">Consumer</span>&lt;<span class="ty">Object</span>&gt; callback) {
+    <span class="ty">List</span>&lt;<span class="ty">Consumer</span>&lt;<span class="ty">Object</span>&gt;&gt; cbs = listeners.get(event);
+    <span class="kw">if</span> (cbs != <span class="kw">null</span>) cbs.remove(callback);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>once(event, callback) — One-Shot Listener</h2><span class="tag">self-removing wrapper</span></div>
+        <p class="muted">Creates an anonymous <code>Consumer</code> wrapper that invokes the real callback, then removes itself via <code>off()</code>. The wrapper must reference <code>this</code> (itself) for removal.</p>
+<pre class="code"><span class="kw">public void</span> once(<span class="ty">String</span> event, <span class="ty">Consumer</span>&lt;<span class="ty">Object</span>&gt; callback) {
+    <span class="ty">Consumer</span>&lt;<span class="ty">Object</span>&gt; wrapper = <span class="kw">new</span> <span class="ty">Consumer</span>&lt;&gt;() {
+        <span class="kw">public void</span> accept(<span class="ty">Object</span> data) {
+            callback.accept(data);       <span class="cm">// invoke real callback</span>
+            off(event, <span class="kw">this</span>);            <span class="cm">// self-remove from listeners</span>
+        }
+    };
+    on(event, wrapper);                  <span class="cm">// register wrapper as listener</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>emit(event, data) — Fire Event</h2><span class="tag">dispatch</span></div>
+<pre class="code"><span class="kw">public void</span> emit(<span class="ty">String</span> event, <span class="ty">Object</span> data) {
+    <span class="kw">for</span> (<span class="ty">Consumer</span>&lt;<span class="ty">Object</span>&gt; cb : listeners.getOrDefault(event, <span class="ty">List</span>.of())) {
+        cb.accept(data);                 <span class="cm">// synchronous dispatch</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.EventBus</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/EventBus.java</code> (59 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>on(event, cb)</code></td><td class="o1">O(1)</td><td>HashMap lookup + list append — amortized constant</td></tr>
+            <tr><td><code>off(event, cb)</code></td><td class="on">O(L)</td><td>Linear scan of listener list to find and remove callback</td></tr>
+            <tr><td><code>emit(event, data)</code></td><td class="on">O(L)</td><td>Iterates all L listeners for the event</td></tr>
+            <tr><td><code>once(event, cb)</code></td><td class="o1">O(1)</td><td>Creates wrapper + calls on() — constant</td></tr>
+            <tr><td>Space</td><td>O(E × L)</td><td>E distinct events × L listeners per event</td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:6px">L = number of listeners for a given event. E = number of distinct events.</p>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Priority listeners?</h3></div>
+            <div class="c-body">
+              <p>Assign a priority to each listener. Store in a <b>priority queue</b> or sorted list per event. Higher-priority listeners fire first. Useful for middleware chains where order matters (e.g., authentication before authorization). Guava EventBus uses <code>@Subscribe</code> with no priority — all equal.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Wildcard events?</h3></div>
+            <div class="c-body">
+              <p>Support patterns like <code>user:*</code> that match <code>user:login</code>, <code>user:logout</code>, etc. On emit, check all registered patterns against the event name. Node.js <code>EventEmitter2</code> supports this. Implementation: iterate all registered patterns, use glob or prefix matching. Adds overhead to emit but increases flexibility.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Error handling in callbacks?</h3></div>
+            <div class="c-body">
+              <p>If a callback throws, should emit continue to the next listener or abort? Options: (1) catch and log errors per callback, continue; (2) stop on first error; (3) collect all errors, throw aggregated exception after all callbacks run. Node.js EventEmitter has a special <code>"error"</code> event — unhandled error events crash the process.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Backpressure / async emit?</h3></div>
+            <div class="c-body">
+              <p>Current implementation is synchronous — slow listeners block the emitter. Solutions: (1) emit on a separate thread pool; (2) queue events and process asynchronously; (3) use reactive streams (Project Reactor, RxJava) for backpressure control. Trade-off: async emit loses ordering guarantees unless you use a single-threaded executor.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Guava EventBus vs custom?</h3></div>
+            <div class="c-body">
+              <p>Guava EventBus: annotation-based (<code>@Subscribe</code>), type-based dispatch (not string events), automatic method discovery, dead event handling. Limitations: no <code>once()</code>, no priority, synchronous only (AsyncEventBus for async). Your custom EventBus: string-based events, explicit registration, more flexible but less type-safe.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>ConcurrentModificationException</b> — Without CopyOnWriteArrayList, removing a listener inside <code>emit()</code> (as <code>once()</code> does) would throw. CopyOnWriteArrayList creates a snapshot on mutation, so the iterating emit loop is unaffected.</div>
+        <div class="callout"><b>Lambda identity for off()</b> — <code>off(event, cb)</code> uses reference equality. If you register a lambda, you must keep a reference to remove it. Anonymous lambdas created inline can't be removed — use <code>once()</code> instead or store the reference.</div>
+        <div class="callout tip"><b>Memory leaks</b> — Listeners hold references to their enclosing objects. Forgetting to call <code>off()</code> prevents garbage collection. Use <code>WeakReference</code> wrappers or ensure cleanup in lifecycle methods (e.g., <code>onDestroy()</code>).</div>
+        <div class="callout info"><b>Thread safety of the map itself</b> — <code>listeners</code> is a plain HashMap. If <code>on()</code> and <code>emit()</code> are called from different threads, the map itself needs synchronization (or use <code>ConcurrentHashMap</code>). CopyOnWriteArrayList only protects the individual lists.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>EventBus vs Observer vs Pub/Sub</h2></div>
+        <table>
+          <thead><tr><th>Feature</th><th>Event Bus</th><th>Observer Pattern</th><th>Pub/Sub System</th></tr></thead>
+          <tbody>
+            <tr><td>Coupling</td><td style="color:var(--ok)">Very loose</td><td>Medium — subject knows observers</td><td style="color:var(--ok)">Very loose</td></tr>
+            <tr><td>Scope</td><td>In-process</td><td>In-process</td><td>Cross-process / network</td></tr>
+            <tr><td>Dispatch</td><td>String-based events</td><td>Type-based (interface)</td><td>Topic-based</td></tr>
+            <tr><td>Async?</td><td>Typically sync</td><td>Typically sync</td><td>Typically async</td></tr>
+            <tr><td>Example</td><td>Guava EventBus, Node.js EE</td><td>Java PropertyChangeListener</td><td>Kafka, Redis Pub/Sub</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/EventBus.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

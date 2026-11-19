@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-06 · Min-Heap — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> Min-Heap</div>
+
+  <header class="hero">
+    <h1>Min-Heap / Priority Queue — Implement from Scratch</h1>
+    <div class="sub">A <b>complete binary tree</b> stored as an array where every parent ≤ its children. <b>siftUp</b> after insert restores the heap property upward; <b>siftDown</b> after extractMin restores it downward. The foundation of priority queues, top-K problems, and graph algorithms (Dijkstra, Prim).</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Google · Amazon · Meta · Microsoft</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">insert()</span> <span class="val ologn">O(log n)</span></span>
+      <span class="cx"><span class="label">extractMin()</span> <span class="val ologn">O(log n)</span></span>
+      <span class="cx"><span class="label">peek()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val on">O(n)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Min-Heap?</h3>
+            <p>A <b>complete binary tree</b> where every node's value is ≤ its children's values. The <b>root is always the minimum</b>. Stored compactly in an array — no pointers needed.</p>
+            <p class="muted">Max-Heap is the same but every parent ≥ children. Just flip the comparison.</p>
+          </div>
+          <div class="card">
+            <h3>Array Representation</h3>
+            <table>
+              <thead><tr><th>Relationship</th><th>Formula</th></tr></thead>
+              <tbody>
+                <tr><td>Parent of <code>i</code></td><td><code>(i - 1) / 2</code></td></tr>
+                <tr><td>Left child of <code>i</code></td><td><code>2 * i + 1</code></td></tr>
+                <tr><td>Right child of <code>i</code></td><td><code>2 * i + 2</code></td></tr>
+              </tbody>
+            </table>
+            <p class="muted">No wasted space — complete tree fills the array left to right, level by level.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Tree ↔ Array Mapping</h2></div>
+        <div class="viz">
+          <svg width="580" height="260" viewBox="0 0 580 260">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+
+            <!-- Tree View -->
+            <text x="200" y="14" text-anchor="middle" font-size="11" fill="#8b95a3">TREE VIEW</text>
+            <!-- Level 0: root -->
+            <rect x="175" y="22" width="50" height="32" rx="6" class="node-hl"/>
+            <text x="200" y="43" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">2</text>
+            <!-- Level 1 -->
+            <line x1="188" y1="54" x2="120" y2="72" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="212" y1="54" x2="280" y2="72" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="90" y="72" width="50" height="32" rx="6" class="node-box"/>
+            <text x="115" y="93" text-anchor="middle" font-size="13" fill="#e6edf3">5</text>
+            <rect x="260" y="72" width="50" height="32" rx="6" class="node-box"/>
+            <text x="285" y="93" text-anchor="middle" font-size="13" fill="#e6edf3">3</text>
+            <!-- Level 2 -->
+            <line x1="103" y1="104" x2="60" y2="122" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="127" y1="104" x2="165" y2="122" stroke="#8b95a3" stroke-width="1.5"/>
+            <line x1="273" y1="104" x2="235" y2="122" stroke="#8b95a3" stroke-width="1.5"/>
+            <rect x="35" y="122" width="50" height="32" rx="6" class="node-box"/>
+            <text x="60" y="143" text-anchor="middle" font-size="13" fill="#e6edf3">8</text>
+            <rect x="140" y="122" width="50" height="32" rx="6" class="node-box"/>
+            <text x="165" y="143" text-anchor="middle" font-size="13" fill="#e6edf3">7</text>
+            <rect x="210" y="122" width="50" height="32" rx="6" class="node-box"/>
+            <text x="235" y="143" text-anchor="middle" font-size="13" fill="#e6edf3">9</text>
+
+            <!-- Array View -->
+            <text x="290" y="200" text-anchor="middle" font-size="11" fill="#8b95a3">ARRAY VIEW</text>
+            <!-- Index labels -->
+            <text x="65" y="218" text-anchor="middle" font-size="10" fill="#8b95a3">0</text>
+            <text x="125" y="218" text-anchor="middle" font-size="10" fill="#8b95a3">1</text>
+            <text x="185" y="218" text-anchor="middle" font-size="10" fill="#8b95a3">2</text>
+            <text x="245" y="218" text-anchor="middle" font-size="10" fill="#8b95a3">3</text>
+            <text x="305" y="218" text-anchor="middle" font-size="10" fill="#8b95a3">4</text>
+            <text x="365" y="218" text-anchor="middle" font-size="10" fill="#8b95a3">5</text>
+            <!-- Array boxes -->
+            <rect x="40" y="222" width="50" height="32" rx="6" class="node-hl"/>
+            <text x="65" y="243" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">2</text>
+            <rect x="100" y="222" width="50" height="32" rx="6" class="node-box"/>
+            <text x="125" y="243" text-anchor="middle" font-size="13" fill="#e6edf3">5</text>
+            <rect x="160" y="222" width="50" height="32" rx="6" class="node-box"/>
+            <text x="185" y="243" text-anchor="middle" font-size="13" fill="#e6edf3">3</text>
+            <rect x="220" y="222" width="50" height="32" rx="6" class="node-box"/>
+            <text x="245" y="243" text-anchor="middle" font-size="13" fill="#e6edf3">8</text>
+            <rect x="280" y="222" width="50" height="32" rx="6" class="node-box"/>
+            <text x="305" y="243" text-anchor="middle" font-size="13" fill="#e6edf3">7</text>
+            <rect x="340" y="222" width="50" height="32" rx="6" class="node-box"/>
+            <text x="365" y="243" text-anchor="middle" font-size="13" fill="#e6edf3">9</text>
+
+            <!-- Mapping lines -->
+            <text x="480" y="40" text-anchor="start" font-size="11" fill="#4ade80">parent(i) = (i-1)/2</text>
+            <text x="480" y="58" text-anchor="start" font-size="11" fill="#38bdf8">left(i) = 2i+1</text>
+            <text x="480" y="76" text-anchor="start" font-size="11" fill="#fbbf24">right(i) = 2i+2</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>siftUp &amp; siftDown</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--ok)">siftUp (after insert)</h3>
+            <ol class="tight">
+              <li>New element added at <b>end</b> of array (bottom-right of tree)</li>
+              <li>Compare with parent: <code>arr[(i-1)/2]</code></li>
+              <li>If child &lt; parent → <b>swap</b></li>
+              <li>Repeat until parent ≤ child or we reach root</li>
+            </ol>
+            <p class="muted">Bubbles up at most <code>log n</code> levels (height of tree)</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--warn)">siftDown (after extractMin)</h3>
+            <ol class="tight">
+              <li>Root removed, <b>last element</b> moved to root</li>
+              <li>Compare with <b>smaller</b> child</li>
+              <li>If parent &gt; smaller child → <b>swap</b></li>
+              <li>Repeat until heap property restored or leaf reached</li>
+            </ol>
+            <p class="muted">Bubbles down at most <code>log n</code> levels</p>
+          </div>
+        </div>
+        <div class="callout info"><b>Why swap with the smaller child?</b> If you swap with the larger child, that larger value becomes the parent of the smaller child — violating the min-heap property. Always pick the smaller child to maintain the invariant.</div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">setup</span></div>
+<pre class="code"><span class="kw">private</span> <span class="kw">int</span>[] heap;
+<span class="kw">private int</span> size;
+
+<span class="kw">public</span> <span class="ty">MinHeap</span>(<span class="kw">int</span> capacity) {
+    <span class="kw">this</span>.heap = <span class="kw">new int</span>[capacity];
+    <span class="kw">this</span>.size = <span class="num">0</span>;
+}
+
+<span class="kw">private int</span> parent(<span class="kw">int</span> i)  { <span class="kw">return</span> (i - <span class="num">1</span>) / <span class="num">2</span>; }
+<span class="kw">private int</span> left(<span class="kw">int</span> i)    { <span class="kw">return</span> <span class="num">2</span> * i + <span class="num">1</span>; }
+<span class="kw">private int</span> right(<span class="kw">int</span> i)   { <span class="kw">return</span> <span class="num">2</span> * i + <span class="num">2</span>; }</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>insert + siftUp</h2><span class="tag">O(log n)</span></div>
+<pre class="code"><span class="kw">public void</span> insert(<span class="kw">int</span> val) {
+    <span class="kw">if</span> (size == heap.length) {
+        heap = <span class="ty">Arrays</span>.copyOf(heap, heap.length * <span class="num">2</span>);  <span class="cm">// grow if needed</span>
+    }
+    heap[size] = val;    <span class="cm">// place at the end</span>
+    siftUp(size);        <span class="cm">// bubble up to correct position</span>
+    size++;
+}
+
+<span class="kw">private void</span> siftUp(<span class="kw">int</span> i) {
+    <span class="kw">while</span> (i &gt; <span class="num">0</span> &amp;&amp; heap[i] &lt; heap[parent(i)]) {
+        swap(i, parent(i));   <span class="cm">// child smaller than parent → swap</span>
+        i = parent(i);        <span class="cm">// move up</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>extractMin + siftDown</h2><span class="tag">O(log n)</span></div>
+<pre class="code"><span class="kw">public int</span> extractMin() {
+    <span class="kw">if</span> (size == <span class="num">0</span>) <span class="kw">throw new</span> <span class="ty">NoSuchElementException</span>(<span class="st">"Heap empty"</span>);
+    <span class="kw">int</span> min = heap[<span class="num">0</span>];       <span class="cm">// root is always the min</span>
+    heap[<span class="num">0</span>] = heap[--size];  <span class="cm">// move last element to root</span>
+    siftDown(<span class="num">0</span>);             <span class="cm">// push it down to correct position</span>
+    <span class="kw">return</span> min;
+}
+
+<span class="kw">private void</span> siftDown(<span class="kw">int</span> i) {
+    <span class="kw">while</span> (left(i) &lt; size) {
+        <span class="kw">int</span> smallest = left(i);
+
+        <span class="cm">// pick the smaller child</span>
+        <span class="kw">if</span> (right(i) &lt; size &amp;&amp; heap[right(i)] &lt; heap[smallest]) {
+            smallest = right(i);
+        }
+
+        <span class="kw">if</span> (heap[i] &lt;= heap[smallest]) <span class="kw">break</span>;  <span class="cm">// heap property satisfied</span>
+
+        swap(i, smallest);
+        i = smallest;  <span class="cm">// move down</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>peek &amp; swap</h2><span class="tag">helpers</span></div>
+        <div class="grid g2">
+          <div>
+<pre class="code"><span class="kw">public int</span> peek() {
+    <span class="kw">if</span> (size == <span class="num">0</span>)
+        <span class="kw">throw new</span> <span class="ty">NoSuchElementException</span>();
+    <span class="kw">return</span> heap[<span class="num">0</span>];  <span class="cm">// O(1) — root is min</span>
+}</pre>
+          </div>
+          <div>
+<pre class="code"><span class="kw">private void</span> swap(<span class="kw">int</span> i, <span class="kw">int</span> j) {
+    <span class="kw">int</span> tmp = heap[i];
+    heap[i] = heap[j];
+    heap[j] = tmp;
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.MinHeap</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/MinHeap.java</code></p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>insert()</code></td><td><span class="ologn" style="color:var(--cache);font-weight:600">O(log n)</span></td><td>siftUp traverses at most tree height</td></tr>
+            <tr><td><code>extractMin()</code></td><td><span class="ologn" style="color:var(--cache);font-weight:600">O(log n)</span></td><td>siftDown traverses at most tree height</td></tr>
+            <tr><td><code>peek()</code></td><td class="o1">O(1)</td><td>Root is always the minimum</td></tr>
+            <tr><td><code>heapify(array)</code></td><td><span style="color:var(--ok);font-weight:600">O(n)</span></td><td>Bottom-up siftDown — most nodes are near leaves</td></tr>
+            <tr><td>Space</td><td>O(n)</td><td>Array storage for n elements</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Top-K elements (LC #215)?</h3></div>
+            <div class="c-body">
+              <p>Use a <b>min-heap of size K</b>. For each element: if heap size &lt; K, insert. If element &gt; heap.peek(), extractMin and insert. At the end, the heap contains the K largest elements. Root = Kth largest. Time: O(n log K).</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Merge K sorted lists (LC #23)?</h3></div>
+            <div class="c-body">
+              <p>Insert the head of each list into a min-heap. Extract the minimum, add it to the result, and insert that node's <code>next</code> into the heap. Repeat until the heap is empty. Time: O(N log K) where N = total elements, K = number of lists.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Median finder with 2 heaps (LC #295)?</h3></div>
+            <div class="c-body">
+              <p>Use a <b>max-heap</b> (lower half) and a <b>min-heap</b> (upper half). Balance so that max-heap size ≥ min-heap size and the difference is at most 1. Median = max-heap root (odd count) or average of both roots (even count). Insert/balance: O(log n).</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Why is heapify O(n), not O(n log n)?</h3></div>
+            <div class="c-body">
+              <p>Bottom-up heapify calls siftDown starting from the last internal node up to the root. Nodes near the bottom (which are the majority) sift down very few levels. The sum of work across all nodes forms a geometric series that converges to O(n). This is different from inserting n elements one by one (which would be O(n log n)).</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Empty heap</b> — <code>extractMin()</code> and <code>peek()</code> on an empty heap must throw or return a sentinel. Always check <code>size == 0</code> first.</div>
+        <div class="callout"><b>Single element</b> — After extracting from a 1-element heap, <code>siftDown</code> should be a no-op since <code>left(0) = 1 >= size</code>. Make sure your loop condition handles this.</div>
+        <div class="callout tip"><b>siftDown: check right child exists</b> — Left child existing doesn't guarantee right child exists. Always check <code>right(i) < size</code> before comparing <code>heap[right(i)]</code>, otherwise you'll get an ArrayIndexOutOfBoundsException.</div>
+        <div class="callout info"><b>Min-Heap vs Max-Heap</b> — The only difference is the comparison direction. For max-heap, flip <code>&lt;</code> to <code>&gt;</code> in siftUp and siftDown. Java's <code>PriorityQueue</code> is a min-heap by default; pass <code>Collections.reverseOrder()</code> for max-heap.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/MinHeap.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

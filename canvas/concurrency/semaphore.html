@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC-07 · Semaphore — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Concurrency</a><span class="sep">›</span> Semaphore</div>
+
+  <header class="hero">
+    <h1>Semaphore — Implement from Scratch</h1>
+    <div class="sub">Controls access to a shared resource with a limited number of <b>permits</b>. <code>acquire()</code> blocks if no permits available. <code>release()</code> returns a permit. <code>tryAcquire()</code> is non-blocking. Used for: connection pools, rate limiting, thread throttling.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Medium-Hard</span>
+      <span class="badge">Google · Amazon · Microsoft</span>
+      <span class="badge">~57 lines</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">acquire()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">release()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">tryAcquire()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(1)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Semaphore?</h3>
+            <p>A <b>permit counter</b>. Threads must acquire a permit before accessing a resource. If no permits are available, the thread blocks. When done, the thread releases the permit for others to use.</p>
+            <p class="muted">Think of it as a parking lot: N spots (permits). Cars (threads) enter when spots are available, wait when full.</p>
+          </div>
+          <div class="card">
+            <h3>Binary vs Counting Semaphore</h3>
+            <ul class="tight">
+              <li><b>Binary (permits=1)</b> — acts like a mutex. Only one thread at a time.</li>
+              <li><b>Counting (permits=N)</b> — up to N threads concurrently. Used for connection pools, rate limiting.</li>
+              <li>Unlike a mutex, any thread can release — not just the owner</li>
+              <li><code>tryAcquire()</code> adds non-blocking semantics</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Semaphore Flow Diagram</h2></div>
+        <div class="flow">
+          <div class="step conc"><div class="box">Threads</div><small>compete for<br>permits</small></div>
+          <div class="step conc"><div class="box">Semaphore</div><small>permits counter<br>acquire / release</small></div>
+          <div class="step conc"><div class="box">Resource</div><small>N concurrent<br>accesses max</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg width="720" height="260">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/></marker>
+              <marker id="arr-g" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+              <marker id="arr-m" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+            </defs>
+            <!-- Threads column -->
+            <rect x="20" y="15" width="100" height="32" rx="7" fill="rgba(74,222,128,.12)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="70" y="36" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Thread 1</text>
+            <rect x="20" y="57" width="100" height="32" rx="7" fill="rgba(74,222,128,.12)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="70" y="78" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Thread 2</text>
+            <rect x="20" y="99" width="100" height="32" rx="7" fill="rgba(248,113,113,.12)" stroke="#f87171" stroke-width="1.5"/>
+            <text x="70" y="120" text-anchor="middle" font-size="11" font-weight="600" fill="#f87171">Thread 3</text>
+            <rect x="20" y="141" width="100" height="32" rx="7" fill="rgba(248,113,113,.12)" stroke="#f87171" stroke-width="1.5"/>
+            <text x="70" y="162" text-anchor="middle" font-size="11" font-weight="600" fill="#f87171">Thread 4</text>
+            <rect x="20" y="183" width="100" height="32" rx="7" fill="rgba(248,113,113,.12)" stroke="#f87171" stroke-width="1.5"/>
+            <text x="70" y="204" text-anchor="middle" font-size="11" font-weight="600" fill="#f87171">Thread 5</text>
+            <!-- Labels -->
+            <text x="70" y="240" text-anchor="middle" font-size="10" fill="#4ade80">green = acquired</text>
+            <text x="70" y="254" text-anchor="middle" font-size="10" fill="#f87171">red = waiting</text>
+            <!-- Arrows to semaphore -->
+            <line x1="120" y1="31" x2="260" y2="65" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-g)"/>
+            <line x1="120" y1="73" x2="260" y2="80" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-g)"/>
+            <line x1="120" y1="115" x2="260" y2="95" stroke="#f87171" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <line x1="120" y1="157" x2="260" y2="100" stroke="#f87171" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <line x1="120" y1="199" x2="260" y2="105" stroke="#f87171" stroke-width="1.2" stroke-dasharray="4 3"/>
+            <text x="190" y="55" text-anchor="middle" font-size="10" fill="#4ade80">acquire()</text>
+            <text x="205" y="135" text-anchor="middle" font-size="10" fill="#f87171">wait()...</text>
+            <!-- Semaphore box -->
+            <rect x="265" y="40" width="180" height="80" rx="10" fill="rgba(167,139,250,.1)" stroke="#a78bfa" stroke-width="2"/>
+            <text x="355" y="62" text-anchor="middle" font-size="13" font-weight="600" fill="#a78bfa">Semaphore</text>
+            <text x="355" y="80" text-anchor="middle" font-size="12" fill="#b8c1cc">permits = 2</text>
+            <!-- Permit indicators -->
+            <rect x="310" y="90" width="30" height="18" rx="4" fill="rgba(74,222,128,.2)" stroke="#4ade80" stroke-width="1"/>
+            <text x="325" y="103" text-anchor="middle" font-size="9" fill="#4ade80">T1</text>
+            <rect x="350" y="90" width="30" height="18" rx="4" fill="rgba(74,222,128,.2)" stroke="#4ade80" stroke-width="1"/>
+            <text x="365" y="103" text-anchor="middle" font-size="9" fill="#4ade80">T2</text>
+            <!-- Arrow to resource -->
+            <line x1="445" y1="80" x2="530" y2="80" stroke="#a78bfa" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- Resource -->
+            <rect x="535" y="50" width="150" height="60" rx="10" fill="rgba(167,139,250,.08)" stroke="#a78bfa" stroke-width="2"/>
+            <text x="610" y="74" text-anchor="middle" font-size="13" font-weight="600" fill="#a78bfa">Resource</text>
+            <text x="610" y="92" text-anchor="middle" font-size="10" fill="#b8c1cc">max 2 concurrent</text>
+            <!-- Release arrow -->
+            <path d="M 610 110 Q 610 160 445 160 Q 350 160 355 125" fill="none" stroke="#8b95a3" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arr-m)"/>
+            <text x="520" y="155" text-anchor="middle" font-size="10" fill="#8b95a3">release() → permits++</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Mutex vs Semaphore</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--conc)">Mutex (Lock)</h3>
+            <ul class="tight">
+              <li><b>Ownership</b> — only the thread that locked can unlock</li>
+              <li>Binary: locked or unlocked</li>
+              <li>Supports reentrance (same thread locks multiple times)</li>
+              <li>Use: protecting critical sections</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--algo)">Semaphore</h3>
+            <ul class="tight">
+              <li><b>No ownership</b> — any thread can release</li>
+              <li>Counting: 0 to N permits</li>
+              <li>Not reentrant — acquiring twice uses two permits</li>
+              <li>Use: limiting concurrency, resource pooling</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout info"><b>Binary semaphore ≠ mutex.</b> A binary semaphore (permits=1) looks like a mutex but has no ownership. Thread A can acquire, Thread B can release. This makes semaphores useful for signaling between threads, but dangerous if you need ownership semantics.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Real-World Uses</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Connection Pools</h3>
+            <p class="muted">Database connection pool with N connections. <code>Semaphore(N)</code> — each <code>acquire()</code> borrows a connection, <code>release()</code> returns it. Prevents creating more connections than the pool size.</p>
+          </div>
+          <div class="card">
+            <h3>Rate Limiting</h3>
+            <p class="muted">API rate limiter: <code>Semaphore(maxConcurrent)</code>. Each incoming request acquires a permit. If all permits are taken, request blocks or gets rejected (tryAcquire). Completed requests release permits.</p>
+          </div>
+          <div class="card">
+            <h3>Thread Throttling</h3>
+            <p class="muted">Control parallelism in a thread pool. Even with 100 threads, limit actual concurrent DB/IO operations to 10 using <code>Semaphore(10)</code>.</p>
+          </div>
+          <div class="card">
+            <h3>Print Queue / Resource Scheduling</h3>
+            <p class="muted">N printers shared by many users. <code>Semaphore(N)</code>. Users acquire a printer, print, release. Classic OS textbook example of semaphore usage.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">state</span></div>
+        <p class="muted">A single <code>int permits</code> field. All methods are <code>synchronized</code> on the semaphore instance.</p>
+<pre class="code"><span class="kw">public class</span> <span class="ty">MySemaphore</span> {
+
+    <span class="kw">private int</span> permits;
+
+    <span class="kw">public</span> <span class="ty">MySemaphore</span>(<span class="kw">int</span> permits) {
+        <span class="kw">this</span>.permits = permits;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>acquire() — Blocking</h2><span class="tag">takes a permit</span></div>
+        <p class="muted">Blocks if no permits available. Uses <code>while</code> loop for spurious wakeup safety. Decrements permits when one becomes available.</p>
+<pre class="code"><span class="kw">public synchronized void</span> acquire() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="kw">while</span> (permits == <span class="num">0</span>) {
+        wait();            <span class="cm">// release monitor, sleep until notified</span>
+    }
+    permits--;             <span class="cm">// take the permit</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>release() — Return Permit</h2><span class="tag">gives back a permit</span></div>
+        <p class="muted">Increments permits and wakes one waiting thread. Uses <code>notify()</code> (not <code>notifyAll</code>) — only one waiter can use the released permit.</p>
+<pre class="code"><span class="kw">public synchronized void</span> release() {
+    permits++;             <span class="cm">// return the permit</span>
+    notify();              <span class="cm">// wake one waiting thread</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>tryAcquire() — Non-Blocking</h2><span class="tag">try without waiting</span></div>
+        <p class="muted">Attempts to acquire a permit without blocking. Returns <code>true</code> if successful, <code>false</code> otherwise. Useful for graceful degradation or timeout patterns.</p>
+<pre class="code"><span class="kw">public synchronized boolean</span> tryAcquire() {
+    <span class="kw">if</span> (permits &gt; <span class="num">0</span>) {
+        permits--;
+        <span class="kw">return true</span>;
+    }
+    <span class="kw">return false</span>;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>availablePermits() — Observe</h2><span class="tag">utility</span></div>
+<pre class="code"><span class="kw">public synchronized int</span> availablePermits() {
+    <span class="kw">return</span> permits;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>main() — Demo</h2><span class="tag">demo</span></div>
+        <p class="muted">5 threads compete for 2 permits. Only 2 run concurrently at any time. Each thread acquires, sleeps (simulating work), then releases.</p>
+<pre class="code"><span class="kw">public static void</span> main(<span class="ty">String</span>[] args) <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="ty">MySemaphore</span> sem = <span class="kw">new</span> <span class="ty">MySemaphore</span>(<span class="num">2</span>);  <span class="cm">// only 2 concurrent accesses</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">1</span>; i &lt;= <span class="num">5</span>; i++) {
+        <span class="kw">final int</span> id = i;
+        <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">try</span> {
+                sem.acquire();
+                <span class="ty">System</span>.out.println(<span class="st">"  Thread "</span> + id + <span class="st">" acquired (permits="</span>
+                    + sem.availablePermits() + <span class="st">")"</span>);
+                <span class="ty">Thread</span>.sleep(<span class="num">300</span>);
+                sem.release();
+                <span class="ty">System</span>.out.println(<span class="st">"  Thread "</span> + id + <span class="st">" released"</span>);
+            } <span class="kw">catch</span> (<span class="ty">InterruptedException</span> e) {
+                <span class="ty">Thread</span>.currentThread().interrupt();
+            }
+        }).start();
+    }
+
+    <span class="ty">Thread</span>.sleep(<span class="num">2000</span>);
+    <span class="ty">System</span>.out.println(<span class="st">"\nOnly 2 threads run concurrently — others wait for permits"</span>);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">7</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.concurrency.MySemaphore</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/concurrency/MySemaphore.java</code> (57 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>acquire()</code></td><td class="o1">O(1)</td><td>Decrement + conditional wait — constant work per attempt</td></tr>
+            <tr><td><code>release()</code></td><td class="o1">O(1)</td><td>Increment + notify — constant</td></tr>
+            <tr><td><code>tryAcquire()</code></td><td class="o1">O(1)</td><td>Check + conditional decrement — no waiting</td></tr>
+            <tr><td>Space</td><td>O(1)</td><td>Single int field — no additional data structure</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Fair semaphore with FIFO queue?</h3></div>
+            <div class="c-body">
+              <p>Our implementation is <b>unfair</b> — a newly arriving thread can steal a permit before a thread that has been waiting longer. For fairness, maintain a FIFO queue of waiting threads. On <code>release()</code>, wake the thread at the head of the queue. Java's <code>Semaphore(permits, true)</code> uses an internal <code>AbstractQueuedSynchronizer</code> (AQS) with a CLH queue for FIFO ordering.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Dining Philosophers?</h3></div>
+            <div class="c-body">
+              <p>Classic deadlock problem: 5 philosophers, 5 forks. One solution: use a <code>Semaphore(4)</code> to limit concurrent diners to 4, guaranteeing at least one philosopher can eat. Alternative: ordered resource acquisition (always pick lower-numbered fork first) or use a <code>ReentrantLock</code> with <code>tryLock()</code> for timeout-based deadlock avoidance.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Reader-Writer with Semaphores?</h3></div>
+            <div class="c-body">
+              <p>Use two semaphores: <code>readMutex</code> (binary, protects reader count) and <code>writeLock</code> (binary, exclusive write access). Readers: increment count under readMutex, first reader acquires writeLock, last reader releases it. Writers: acquire writeLock directly. This gives reader-preference; for writer-preference, add a third semaphore.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Connection pool using semaphore?</h3></div>
+            <div class="c-body">
+              <p>Pool of N connections, <code>Semaphore(N)</code>. <code>borrow()</code>: acquire permit, then take connection from a concurrent queue. <code>returnConn()</code>: put connection back in queue, release permit. The semaphore prevents borrowing when all connections are in use. <code>tryAcquire(timeout)</code> enables fail-fast when pool is exhausted.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>release without acquire inflates permits</b> — Since there's no ownership tracking, calling <code>release()</code> without a prior <code>acquire()</code> increases permits beyond the initial value. This is a feature in signaling scenarios but a bug in resource pooling. To prevent, track acquired state per thread or add validation.</div>
+        <div class="callout"><b>permits = 0 initial</b> — All threads block immediately on <code>acquire()</code>. Useful for signaling: another thread calls <code>release()</code> to unblock one waiter. This turns the semaphore into a one-shot signal (like a simplified latch for one thread).</div>
+        <div class="callout tip"><b>notify() vs notifyAll()</b> — Our <code>release()</code> uses <code>notify()</code> (not <code>notifyAll</code>). This is safe here because each <code>release()</code> only frees one permit — waking one waiter is sufficient. If we released multiple permits at once, we'd need <code>notifyAll()</code>.</div>
+        <div class="callout info"><b>Interrupt during wait</b> — <code>wait()</code> throws <code>InterruptedException</code> if the thread is interrupted while waiting. Our <code>acquire()</code> propagates it. Callers should handle interruption gracefully — typically by restoring the interrupt flag and cleaning up.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>vs Java Built-in</h2></div>
+        <table>
+          <thead><tr><th>Feature</th><th>MySemaphore</th><th>java.util.concurrent.Semaphore</th></tr></thead>
+          <tbody>
+            <tr><td>Fairness</td><td>Unfair (random wakeup)</td><td>Optional fair mode (FIFO via AQS)</td></tr>
+            <tr><td>tryAcquire(timeout)</td><td>Not implemented</td><td>Supported with TimeUnit</td></tr>
+            <tr><td>acquire(n)</td><td>Single permit only</td><td>Multi-permit acquire/release</td></tr>
+            <tr><td>Interruptible</td><td>Yes (wait throws)</td><td>Yes + acquireUninterruptibly()</td></tr>
+            <tr><td>Implementation</td><td>synchronized + wait/notify</td><td>AQS (CAS-based, lock-free fast path)</td></tr>
+            <tr><td style="color:var(--ok)">Interview value</td><td style="color:var(--ok)">High — shows concurrency understanding</td><td>Low — just an import</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/concurrency/MySemaphore.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

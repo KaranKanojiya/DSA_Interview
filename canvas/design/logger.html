@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-05 · Logger — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> Logger</div>
+
+  <header class="hero">
+    <h1>Logger — Implement from Scratch</h1>
+    <div class="sub">Thread-safe <b>singleton</b> (double-checked locking + volatile) with configurable log levels (DEBUG / INFO / WARN / ERROR) and an <b>Appender strategy</b> for pluggable output targets. Uses <code>ordinal()</code> comparison for level filtering — messages below the minimum level are silently dropped.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Amazon · Microsoft</span>
+      <span class="badge">~70 lines</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">log()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">getInstance()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(1)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is it?</h3>
+            <p>A <b>singleton logger</b> — one global instance shared across the entire application. Thread-safe via double-checked locking so only one instance is ever created, even under concurrent access.</p>
+            <p class="muted">Combines <b>Singleton</b> (single instance) + <b>Strategy</b> (swappable appender) patterns.</p>
+          </div>
+          <div class="card">
+            <h3>Why build from scratch?</h3>
+            <ul class="tight">
+              <li>Tests understanding of <b>double-checked locking</b> idiom</li>
+              <li><code>volatile</code> keyword and memory visibility</li>
+              <li>Enum ordinal comparison for log level filtering</li>
+              <li>Strategy pattern for pluggable output (console, file, network)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Architecture Diagram</h2></div>
+        <div class="flow">
+          <div class="step design"><div class="box">Caller</div><small>log.info("msg")<br>any thread</small></div>
+          <div class="step design"><div class="box">Level Filter</div><small>ordinal() ≥ min?<br>drop if below</small></div>
+          <div class="step design"><div class="box">Formatter</div><small>[time] [level]<br>[thread] msg</small></div>
+          <div class="step design"><div class="box">Appender</div><small>strategy pattern<br>console / file / …</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg viewBox="0 0 760 220" width="760" height="220">
+            <defs>
+              <marker id="arr-d" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+              <marker id="arr-m" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+            </defs>
+            <!-- Singleton box -->
+            <rect x="15" y="15" width="200" height="105" rx="10" fill="rgba(251,113,133,.08)" stroke="#fb7185" stroke-width="2"/>
+            <text x="115" y="38" text-anchor="middle" font-size="12" font-weight="bold" fill="#fb7185">Singleton Instance</text>
+            <text x="115" y="56" text-anchor="middle" font-size="10" fill="#b8c1cc">volatile Logger instance</text>
+            <rect x="35" y="68" width="160" height="40" rx="6" class="node-box"/>
+            <text x="115" y="86" text-anchor="middle" font-size="11" fill="#e6edf3">double-checked</text>
+            <text x="115" y="100" text-anchor="middle" font-size="11" fill="#e6edf3">locking</text>
+            <!-- Arrow to level filter -->
+            <line x1="215" y1="67" x2="260" y2="67" stroke="#fb7185" stroke-width="2" marker-end="url(#arr-d)"/>
+            <!-- Level Filter -->
+            <rect x="265" y="30" width="150" height="80" rx="8" fill="rgba(251,113,133,.06)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="340" y="54" text-anchor="middle" font-size="11" font-weight="600" fill="#fb7185">Level Filter</text>
+            <text x="340" y="72" text-anchor="middle" font-size="10" fill="#b8c1cc">level.ordinal()</text>
+            <text x="340" y="86" text-anchor="middle" font-size="10" fill="#b8c1cc">≥ minLevel.ordinal()?</text>
+            <!-- Enum levels below -->
+            <rect x="265" y="130" width="150" height="75" rx="8" class="node-box"/>
+            <text x="340" y="150" text-anchor="middle" font-size="10" font-weight="600" fill="#fbbf24">enum Level</text>
+            <text x="340" y="168" text-anchor="middle" font-size="10" fill="#4ade80">DEBUG=0  INFO=1</text>
+            <text x="340" y="184" text-anchor="middle" font-size="10" fill="#f87171">WARN=2   ERROR=3</text>
+            <!-- Arrow from level enum to filter -->
+            <line x1="340" y1="130" x2="340" y2="115" stroke="#8b95a3" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr-m)"/>
+            <!-- Arrow to formatter -->
+            <line x1="415" y1="67" x2="460" y2="67" stroke="#fb7185" stroke-width="2" marker-end="url(#arr-d)"/>
+            <!-- Formatter -->
+            <rect x="465" y="30" width="130" height="80" rx="8" fill="rgba(251,113,133,.06)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="530" y="54" text-anchor="middle" font-size="11" font-weight="600" fill="#fb7185">Formatter</text>
+            <text x="530" y="72" text-anchor="middle" font-size="10" fill="#b8c1cc">[HH:mm:ss.SSS]</text>
+            <text x="530" y="86" text-anchor="middle" font-size="10" fill="#b8c1cc">[LEVEL] [thread]</text>
+            <!-- Arrow to appender -->
+            <line x1="595" y1="67" x2="640" y2="67" stroke="#fb7185" stroke-width="2" marker-end="url(#arr-d)"/>
+            <!-- Appender (strategy) -->
+            <rect x="645" y="15" width="100" height="45" rx="6" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="695" y="42" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">Console</text>
+            <rect x="645" y="70" width="100" height="45" rx="6" class="node-box"/>
+            <text x="695" y="97" text-anchor="middle" font-size="11" fill="#b8c1cc">File</text>
+            <rect x="645" y="125" width="100" height="45" rx="6" class="node-box"/>
+            <text x="695" y="152" text-anchor="middle" font-size="11" fill="#b8c1cc">Network</text>
+            <text x="695" y="190" text-anchor="middle" font-size="10" fill="#8b95a3">Strategy Pattern</text>
+            <text x="695" y="204" text-anchor="middle" font-size="10" fill="#8b95a3">(Appender interface)</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Double-Checked Locking — Step by Step</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 720 195" width="720" height="195">
+            <defs>
+              <marker id="arr-d2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+            </defs>
+            <!-- Step 1 -->
+            <rect x="10" y="20" width="155" height="55" rx="8" fill="rgba(251,113,133,.08)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="87" y="42" text-anchor="middle" font-size="11" font-weight="600" fill="#fb7185">1st check</text>
+            <text x="87" y="58" text-anchor="middle" font-size="10" fill="#b8c1cc">instance == null?</text>
+            <text x="87" y="90" text-anchor="middle" font-size="9" fill="#4ade80">no lock — fast path</text>
+            <!-- Arrow -->
+            <line x1="165" y1="47" x2="200" y2="47" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-d2)"/>
+            <text x="183" y="40" text-anchor="middle" font-size="9" fill="#4ade80">yes</text>
+            <!-- Step 2 -->
+            <rect x="205" y="20" width="155" height="55" rx="8" fill="rgba(167,139,250,.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="282" y="42" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">synchronized</text>
+            <text x="282" y="58" text-anchor="middle" font-size="10" fill="#b8c1cc">on Logger.class</text>
+            <text x="282" y="90" text-anchor="middle" font-size="9" fill="#a78bfa">only first callers block</text>
+            <!-- Arrow -->
+            <line x1="360" y1="47" x2="395" y2="47" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-d2)"/>
+            <!-- Step 3 -->
+            <rect x="400" y="20" width="155" height="55" rx="8" fill="rgba(251,113,133,.08)" stroke="#fb7185" stroke-width="1.5"/>
+            <text x="477" y="42" text-anchor="middle" font-size="11" font-weight="600" fill="#fb7185">2nd check</text>
+            <text x="477" y="58" text-anchor="middle" font-size="10" fill="#b8c1cc">instance == null?</text>
+            <text x="477" y="90" text-anchor="middle" font-size="9" fill="#fbbf24">prevents duplicate creation</text>
+            <!-- Arrow -->
+            <line x1="555" y1="47" x2="590" y2="47" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-d2)"/>
+            <text x="573" y="40" text-anchor="middle" font-size="9" fill="#4ade80">yes</text>
+            <!-- Step 4 -->
+            <rect x="595" y="20" width="120" height="55" rx="8" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="655" y="42" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">new Logger()</text>
+            <text x="655" y="58" text-anchor="middle" font-size="10" fill="#b8c1cc">assign instance</text>
+            <!-- volatile note -->
+            <rect x="205" y="120" width="510" height="60" rx="8" class="node-box"/>
+            <text x="460" y="142" text-anchor="middle" font-size="11" font-weight="600" fill="#f87171">Why volatile?</text>
+            <text x="460" y="160" text-anchor="middle" font-size="10" fill="#b8c1cc">Without volatile, Thread B might see a partially constructed instance (reordered writes).</text>
+            <text x="460" y="174" text-anchor="middle" font-size="10" fill="#b8c1cc">volatile ensures happens-before: construction completes before reference is published.</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--design)">getInstance()</h3>
+            <ol class="tight">
+              <li>1st null check — fast path, no locking</li>
+              <li>If null → <code>synchronized(Logger.class)</code></li>
+              <li>2nd null check inside lock — prevents race</li>
+              <li>Create instance, assign to volatile field</li>
+              <li>Subsequent calls skip both checks</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--design)">log(level, msg)</h3>
+            <ol class="tight">
+              <li>Compare <code>level.ordinal()</code> ≥ <code>minLevel.ordinal()</code></li>
+              <li>If below → silently return (filtered)</li>
+              <li>Format: <code>[time] [LEVEL] [thread] message</code></li>
+              <li><code>synchronized(this)</code> → appender.append()</li>
+              <li>Appender strategy handles actual output</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Level Enum &amp; Appender Interface</h2><span class="tag">contracts</span></div>
+        <p class="muted">Log levels use enum ordinal for filtering. Appender is a strategy interface — swap output target without changing the logger.</p>
+<pre class="code"><span class="kw">enum</span> <span class="ty">Level</span> { DEBUG, INFO, WARN, ERROR }
+<span class="cm">// ordinals: DEBUG=0, INFO=1, WARN=2, ERROR=3</span>
+
+<span class="kw">interface</span> <span class="ty">Appender</span> {
+    <span class="kw">void</span> append(<span class="ty">String</span> message);
+}
+<span class="cm">// Strategy pattern — plug in console, file, network, etc.</span></pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Singleton Fields &amp; Constructor</h2><span class="tag">double-checked locking</span></div>
+        <p class="muted"><code>volatile</code> ensures memory visibility. Private constructor prevents external instantiation.</p>
+<pre class="code"><span class="kw">private static volatile</span> <span class="ty">Logger</span> instance;
+<span class="kw">private</span> <span class="ty">Level</span> minLevel = <span class="ty">Level</span>.INFO;      <span class="cm">// default: INFO and above</span>
+<span class="kw">private</span> <span class="ty">Appender</span> appender = <span class="ty">System</span>.out::println;  <span class="cm">// default: console</span>
+
+<span class="kw">private</span> <span class="ty">Logger</span>() {}  <span class="cm">// private — singleton</span></pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>getInstance() — Double-Checked Locking</h2><span class="tag">thread-safe singleton</span></div>
+<pre class="code"><span class="kw">public static</span> <span class="ty">Logger</span> getInstance() {
+    <span class="kw">if</span> (instance == <span class="kw">null</span>) {                  <span class="cm">// 1st check — no lock (fast path)</span>
+        <span class="kw">synchronized</span> (<span class="ty">Logger</span>.<span class="kw">class</span>) {       <span class="cm">// class-level lock</span>
+            <span class="kw">if</span> (instance == <span class="kw">null</span>) {          <span class="cm">// 2nd check — inside lock</span>
+                instance = <span class="kw">new</span> <span class="ty">Logger</span>();    <span class="cm">// create once</span>
+            }
+        }
+    }
+    <span class="kw">return</span> instance;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>log(level, msg) — Level Filtering + Formatting</h2><span class="tag">core method</span></div>
+<pre class="code"><span class="kw">public void</span> log(<span class="ty">Level</span> level, <span class="ty">String</span> message) {
+    <span class="kw">if</span> (level.ordinal() &gt;= minLevel.ordinal()) {  <span class="cm">// ordinal comparison</span>
+        <span class="ty">String</span> formatted = <span class="ty">String</span>.format(
+            <span class="st">"[%s] [%s] [%s] %s"</span>,
+            <span class="ty">LocalDateTime</span>.now().format(
+                <span class="ty">DateTimeFormatter</span>.ofPattern(<span class="st">"HH:mm:ss.SSS"</span>)),
+            level,
+            <span class="ty">Thread</span>.currentThread().getName(),
+            message);
+        <span class="kw">synchronized</span> (<span class="kw">this</span>) {
+            appender.append(formatted);            <span class="cm">// thread-safe output</span>
+        }
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Convenience Methods &amp; Setters</h2><span class="tag">API</span></div>
+<pre class="code"><span class="kw">public void</span> setLevel(<span class="ty">Level</span> level) { <span class="kw">this</span>.minLevel = level; }
+<span class="kw">public void</span> setAppender(<span class="ty">Appender</span> appender) { <span class="kw">this</span>.appender = appender; }
+
+<span class="kw">public void</span> debug(<span class="ty">String</span> msg) { log(<span class="ty">Level</span>.DEBUG, msg); }
+<span class="kw">public void</span> info(<span class="ty">String</span> msg)  { log(<span class="ty">Level</span>.INFO, msg); }
+<span class="kw">public void</span> warn(<span class="ty">String</span> msg)  { log(<span class="ty">Level</span>.WARN, msg); }
+<span class="kw">public void</span> error(<span class="ty">String</span> msg) { log(<span class="ty">Level</span>.ERROR, msg); }</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.Logger</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/Logger.java</code> (70 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>getInstance()</code></td><td class="o1">O(1)</td><td>First check is lock-free; subsequent calls skip both checks</td></tr>
+            <tr><td><code>log(level, msg)</code></td><td class="o1">O(1)</td><td>Ordinal compare + format + appender call — all constant</td></tr>
+            <tr><td><code>setLevel() / setAppender()</code></td><td class="o1">O(1)</td><td>Simple field assignment</td></tr>
+            <tr><td>Space</td><td>O(1)</td><td>Single instance — constant overhead</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Log rotation?</h3></div>
+            <div class="c-body">
+              <p>File appender that rolls to a new file after size/time threshold. Track bytes written; when exceeding limit, close current file, rename with timestamp/index, open a new file. SLF4J/Logback provides <code>RollingFileAppender</code> with <code>SizeBasedTriggeringPolicy</code> and <code>TimeBasedRollingPolicy</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Async appender?</h3></div>
+            <div class="c-body">
+              <p>Current implementation blocks the calling thread on <code>appender.append()</code>. Async solution: push formatted messages into a <code>BlockingQueue</code>, a dedicated writer thread drains and writes. Reduces latency on the calling thread. Logback's <code>AsyncAppender</code> uses a ring buffer (LMAX Disruptor) for lock-free queueing.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Structured logging (JSON)?</h3></div>
+            <div class="c-body">
+              <p>Instead of plain text, emit JSON: <code>{"timestamp":"...","level":"INFO","thread":"main","message":"..."}</code>. Enables machine parsing by log aggregation systems (ELK, Splunk, Datadog). Add MDC (Mapped Diagnostic Context) for request IDs, user IDs. Logback + logstash-logback-encoder is the standard Java approach.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>SLF4J / Logback architecture?</h3></div>
+            <div class="c-body">
+              <p>SLF4J is a <b>facade</b> (interface only). Logback is the <b>implementation</b>. Architecture: <code>Logger → Appender → Encoder → OutputStream</code>. Logback supports: hierarchical loggers (com.example inherits from com), filters per appender, multiple appenders per logger. Configuration via <code>logback.xml</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Log aggregation at scale?</h3></div>
+            <div class="c-body">
+              <p>Each service writes to local files or stdout → a log shipper (Filebeat, Fluentd) tails logs → pushes to a centralized store (Elasticsearch, CloudWatch, Splunk). The ELK stack: Elasticsearch (store + index), Logstash (transform), Kibana (visualize). Correlation IDs across services enable distributed tracing.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>volatile is mandatory</b> — Without <code>volatile</code>, the JVM may reorder writes: another thread can see a non-null reference to a partially constructed Logger object. The <code>volatile</code> keyword establishes a happens-before edge.</div>
+        <div class="callout"><b>Enum holder alternative</b> — An inner static class <code>Holder { static final Logger INSTANCE = new Logger(); }</code> is simpler and thread-safe (class loading is synchronized by the JVM). No volatile or double-checked locking needed.</div>
+        <div class="callout tip"><b>Enum singleton</b> — <code>enum Logger { INSTANCE; }</code> is the simplest thread-safe singleton. Prevents deserialization and reflection attacks. Recommended by Effective Java but doesn't allow constructor parameters.</div>
+        <div class="callout info"><b>setLevel/setAppender thread-safety</b> — These are simple field writes without synchronization. In a multi-threaded environment, make these fields <code>volatile</code> or guard with locks to ensure visibility. The current implementation relies on the synchronized block in <code>log()</code> for happens-before.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Singleton Variants</h2></div>
+        <table>
+          <thead><tr><th>Approach</th><th>Thread-Safe?</th><th>Lazy?</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Double-checked locking</td><td style="color:var(--ok)">Yes</td><td style="color:var(--ok)">Yes</td><td>Requires <code>volatile</code>. Used in this implementation.</td></tr>
+            <tr><td>synchronized getInstance()</td><td style="color:var(--ok)">Yes</td><td style="color:var(--ok)">Yes</td><td>Simple but locks on every call — slower.</td></tr>
+            <tr><td>Static holder class</td><td style="color:var(--ok)">Yes</td><td style="color:var(--ok)">Yes</td><td>JVM guarantees class loading is safe. Preferred.</td></tr>
+            <tr><td>Enum singleton</td><td style="color:var(--ok)">Yes</td><td class="on">No</td><td>Reflection/serialization safe. Simplest.</td></tr>
+            <tr><td>Eager (static field)</td><td style="color:var(--ok)">Yes</td><td class="on">No</td><td>Created at class load time.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/Logger.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

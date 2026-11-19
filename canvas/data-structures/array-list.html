@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-03 · ArrayList — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> ArrayList</div>
+
+  <header class="hero">
+    <h1>ArrayList (Dynamic Array) — Implement from Scratch</h1>
+    <div class="sub">Array that <b>grows automatically</b> when capacity is exceeded. Uses a <b>1.5× growth factor</b> (Java's choice) for amortized O(1) add. The backbone of most collection APIs — understanding resize mechanics and amortized analysis is critical for interviews.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Amazon · Google · Microsoft</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">add</span> <span class="val o1">O(1) amort.</span></span>
+      <span class="cx"><span class="label">get</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">remove</span> <span class="val on">O(n)</span></span>
+      <span class="cx"><span class="label">add(i)</span> <span class="val on">O(n)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Dynamic Array?</h3>
+            <p>A resizable array that maintains a backing <b>Object[]</b> with a <code>size</code> (elements used) and <code>capacity</code> (array length). When <code>size == capacity</code>, it allocates a larger array and copies everything over.</p>
+            <p class="muted">The key insight: by growing multiplicatively (not by +1), the total copy cost is amortized O(1) per add.</p>
+          </div>
+          <div class="card">
+            <h3>Why build from scratch?</h3>
+            <ul class="tight">
+              <li>Tests understanding of <b>amortized analysis</b></li>
+              <li>Explains why <code>add()</code> is O(1) despite occasional O(n) resizes</li>
+              <li>Foundation for StringBuilder, stack, and buffer implementations</li>
+              <li>Interviewers want to see the <code>ensureCapacity → copy → grow</code> pattern</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Size vs Capacity — The Key Distinction</h2></div>
+        <div class="viz">
+          <svg width="680" height="120">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+            <!-- Array cells -->
+            <rect x="10" y="35" width="60" height="40" rx="4" style="fill:rgba(45,212,191,.15);stroke:var(--accent);stroke-width:2"/>
+            <text x="40" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">A</text>
+            <rect x="72" y="35" width="60" height="40" rx="4" style="fill:rgba(45,212,191,.15);stroke:var(--accent);stroke-width:2"/>
+            <text x="102" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">B</text>
+            <rect x="134" y="35" width="60" height="40" rx="4" style="fill:rgba(45,212,191,.15);stroke:var(--accent);stroke-width:2"/>
+            <text x="164" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">C</text>
+            <rect x="196" y="35" width="60" height="40" rx="4" style="fill:rgba(45,212,191,.15);stroke:var(--accent);stroke-width:2"/>
+            <text x="226" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">D</text>
+            <rect x="258" y="35" width="60" height="40" rx="4" style="fill:rgba(45,212,191,.15);stroke:var(--accent);stroke-width:2"/>
+            <text x="288" y="60" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">E</text>
+            <!-- Empty capacity cells -->
+            <rect x="320" y="35" width="60" height="40" rx="4" class="dummy"/>
+            <text x="350" y="60" text-anchor="middle" font-size="11" fill="#8b95a3">—</text>
+            <rect x="382" y="35" width="60" height="40" rx="4" class="dummy"/>
+            <text x="412" y="60" text-anchor="middle" font-size="11" fill="#8b95a3">—</text>
+            <rect x="444" y="35" width="60" height="40" rx="4" class="dummy"/>
+            <text x="474" y="60" text-anchor="middle" font-size="11" fill="#8b95a3">—</text>
+            <rect x="506" y="35" width="60" height="40" rx="4" class="dummy"/>
+            <text x="536" y="60" text-anchor="middle" font-size="11" fill="#8b95a3">—</text>
+            <rect x="568" y="35" width="60" height="40" rx="4" class="dummy"/>
+            <text x="598" y="60" text-anchor="middle" font-size="11" fill="#8b95a3">—</text>
+            <!-- Brackets -->
+            <line x1="10" y1="85" x2="318" y2="85" stroke="#4ade80" stroke-width="2"/>
+            <text x="164" y="102" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">size = 5 (elements)</text>
+            <line x1="10" y1="15" x2="628" y2="15" stroke="#fbbf24" stroke-width="2"/>
+            <text x="319" y="30" text-anchor="middle" font-size="11" font-weight="600" fill="#fbbf24">capacity = 10 (array.length)</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Amortized Analysis</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--ok)">The Doubling Argument</h3>
+            <p>Starting from capacity 1 and doubling each time, after n adds the total copy work is:</p>
+            <p style="font-family:monospace;color:var(--accent)">1 + 2 + 4 + 8 + ... + n = 2n - 1</p>
+            <p>Total work = <b>n adds + 2n copies ≈ 3n</b>. Divided by n operations = <b>O(1) amortized per add</b>.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">Growth Factor: 1.5× vs 2×</h3>
+            <table>
+              <thead><tr><th></th><th>1.5× (Java)</th><th>2× (many others)</th></tr></thead>
+              <tbody>
+                <tr><td>Memory waste</td><td>≤ 33%</td><td>≤ 50%</td></tr>
+                <tr><td>Resize frequency</td><td>More often</td><td>Less often</td></tr>
+                <tr><td>Can reuse old memory?</td><td>Sometimes yes</td><td>Never (new &gt; old)</td></tr>
+                <tr><td>Amortized</td><td>O(1)</td><td>O(1)</td></tr>
+              </tbody>
+            </table>
+            <p class="muted">Java uses <code>oldCap + (oldCap &gt;&gt; 1)</code> — integer 1.5× via bit shift.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Resize Flow</h2></div>
+        <div class="flow">
+          <div class="step ds"><div class="box">size == capacity</div><small>array full<br>on next add</small></div>
+          <div class="step cache"><div class="box">newCap = 1.5×</div><small>oldLen + oldLen&gt;&gt;1<br>bit shift trick</small></div>
+          <div class="step conc"><div class="box">Arrays.copyOf</div><small>copy all elements<br>to new array</small></div>
+          <div class="step" style="flex:0.6"><div class="box" style="border-color:var(--ok);color:var(--ok)">O(n) one-time</div><small>amortized O(1)<br>across adds</small></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">setup</span></div>
+<pre class="code"><span class="kw">private static final int</span> DEFAULT_CAPACITY = <span class="num">10</span>;
+<span class="kw">private</span> <span class="ty">Object</span>[] data;
+<span class="kw">private int</span> size;
+
+<span class="kw">public</span> <span class="ty">MyArrayList</span>() {
+    data = <span class="kw">new</span> <span class="ty">Object</span>[DEFAULT_CAPACITY];
+}</pre>
+        <div class="callout info" style="margin-top:8px"><b>Why Object[]?</b> Java doesn't allow <code>new E[]</code> due to type erasure. Store as <code>Object[]</code> and cast on retrieval. Java's real <code>ArrayList</code> does the same.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>add(element) — O(1) amortized</h2><span class="tag">append</span></div>
+<pre class="code"><span class="kw">public void</span> add(<span class="ty">E</span> element) {
+    ensureCapacity();
+    data[size++] = element;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>add(index, element) — O(n)</h2><span class="tag">insert at position</span></div>
+<pre class="code"><span class="kw">public void</span> add(<span class="kw">int</span> index, <span class="ty">E</span> element) {
+    <span class="kw">if</span> (index &lt; <span class="num">0</span> || index &gt; size)
+        <span class="kw">throw new</span> <span class="ty">IndexOutOfBoundsException</span>();
+    ensureCapacity();
+    <span class="cm">// Shift elements right to make room</span>
+    <span class="ty">System</span>.arraycopy(data, index, data, index + <span class="num">1</span>, size - index);
+    data[index] = element;
+    size++;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>get(index) — O(1)</h2><span class="tag">random access</span></div>
+<pre class="code"><span class="ann">@SuppressWarnings</span>(<span class="st">"unchecked"</span>)
+<span class="kw">public</span> <span class="ty">E</span> get(<span class="kw">int</span> index) {
+    <span class="kw">if</span> (index &lt; <span class="num">0</span> || index &gt;= size)
+        <span class="kw">throw new</span> <span class="ty">IndexOutOfBoundsException</span>();
+    <span class="kw">return</span> (<span class="ty">E</span>) data[index];
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>remove(index) — O(n)</h2><span class="tag">shift left</span></div>
+<pre class="code"><span class="ann">@SuppressWarnings</span>(<span class="st">"unchecked"</span>)
+<span class="kw">public</span> <span class="ty">E</span> remove(<span class="kw">int</span> index) {
+    <span class="kw">if</span> (index &lt; <span class="num">0</span> || index &gt;= size)
+        <span class="kw">throw new</span> <span class="ty">IndexOutOfBoundsException</span>();
+    <span class="ty">E</span> removed = (<span class="ty">E</span>) data[index];
+    <span class="cm">// Shift elements left to fill the gap</span>
+    <span class="ty">System</span>.arraycopy(data, index + <span class="num">1</span>, data, index, size - index - <span class="num">1</span>);
+    data[--size] = <span class="kw">null</span>;   <span class="cm">// prevent memory leak</span>
+    <span class="kw">return</span> removed;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>set(index, element) — O(1)</h2><span class="tag">replace</span></div>
+<pre class="code"><span class="kw">public void</span> set(<span class="kw">int</span> index, <span class="ty">E</span> element) {
+    <span class="kw">if</span> (index &lt; <span class="num">0</span> || index &gt;= size)
+        <span class="kw">throw new</span> <span class="ty">IndexOutOfBoundsException</span>();
+    data[index] = element;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">7</span><h2>ensureCapacity — Resize at 1.5×</h2><span class="tag">growth</span></div>
+<pre class="code"><span class="kw">private void</span> ensureCapacity() {
+    <span class="kw">if</span> (size == data.length) {
+        <span class="kw">int</span> newCapacity = data.length + (data.length &gt;&gt; <span class="num">1</span>); <span class="cm">// 1.5× growth</span>
+        data = <span class="ty">Arrays</span>.copyOf(data, newCapacity);
+    }
+}</pre>
+        <div class="callout tip" style="margin-top:8px"><b><code>data.length &gt;&gt; 1</code></b> is integer division by 2. So <code>length + length/2 = 1.5×</code>. This is exactly what Java's <code>ArrayList</code> does internally.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">8</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.MyArrayList</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/MyArrayList.java</code> (81 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>add(e)</code></td><td><span class="o1">O(1) amort.</span></td><td>Append at end. Occasional O(n) resize amortized away</td></tr>
+            <tr><td><code>add(i, e)</code></td><td><span class="on">O(n)</span></td><td>Shift n-i elements right via arraycopy</td></tr>
+            <tr><td><code>get(i)</code></td><td><span class="o1">O(1)</span></td><td>Direct array index — <code>data[i]</code></td></tr>
+            <tr><td><code>set(i, e)</code></td><td><span class="o1">O(1)</span></td><td>Direct array index — <code>data[i] = e</code></td></tr>
+            <tr><td><code>remove(i)</code></td><td><span class="on">O(n)</span></td><td>Shift n-i-1 elements left via arraycopy</td></tr>
+            <tr><td><code>ensureCapacity</code></td><td><span class="on">O(n)</span></td><td>Copy all elements to new array. Amortized O(1) per add</td></tr>
+            <tr><td>Space</td><td>O(n)</td><td>Backing array — up to 1.5× elements due to unused capacity</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Should you shrink on remove?</h3></div>
+            <div class="c-body">
+              <p>Java's <code>ArrayList</code> does <b>not</b> auto-shrink. You can call <code>trimToSize()</code> manually. Auto-shrinking risks thrashing — repeated add/remove near the threshold causes repeated resize/shrink cycles. A common strategy: shrink when size drops below 25% of capacity.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Thread-safe alternatives?</h3></div>
+            <div class="c-body">
+              <p><code>Vector</code> — synchronized on every method (coarse-grained, slow). <code>CopyOnWriteArrayList</code> — copies entire array on every write, great for read-heavy workloads. <code>Collections.synchronizedList()</code> — wrapper with global lock.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Why Object[] instead of E[]?</h3></div>
+            <div class="c-body">
+              <p>Java's type erasure means <code>new E[n]</code> is illegal at runtime — the JVM doesn't know what E is. Use <code>new Object[n]</code> and cast on retrieval with <code>@SuppressWarnings("unchecked")</code>. This is exactly how <code>java.util.ArrayList</code> is implemented.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>ArrayList vs LinkedList?</h3></div>
+            <div class="c-body">
+              <p><b>ArrayList:</b> O(1) random access, cache-friendly (contiguous memory), O(n) insert/remove at middle. <b>LinkedList:</b> O(1) insert/remove at ends, O(n) random access, poor cache locality. In practice, ArrayList wins almost always due to CPU cache effects.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Index bounds check</b> — <code>get()</code> and <code>remove()</code> check <code>0 ≤ index &lt; size</code>, but <code>add(index)</code> allows <code>index == size</code> (append). Getting this boundary wrong is a common bug.</div>
+        <div class="callout"><b>Null out removed slot</b> — After shifting elements left on remove, set <code>data[--size] = null</code>. Without this, the old reference prevents garbage collection — a subtle <b>memory leak</b>.</div>
+        <div class="callout tip"><b>Resize during add(index)</b> — Must call <code>ensureCapacity()</code> <b>before</b> the arraycopy shift. Otherwise, if the array is full, the shift would overflow. Our code handles this correctly.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/MyArrayList.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

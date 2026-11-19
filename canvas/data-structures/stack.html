@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-04 · Stack + Min-Stack — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> Stack</div>
+
+  <header class="hero">
+    <h1>Stack + Min-Stack — Implement from Scratch</h1>
+    <div class="sub">LIFO with push/pop/peek all O(1). <b>Min-Stack</b> tracks the minimum at each level using a parallel stack — <code>getMin()</code> in O(1). The trick: when you push, also push the current minimum onto a second stack. When you pop, pop from both. LeetCode #155.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">LeetCode #155</span>
+      <span class="badge">Amazon · Microsoft · Apple</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">push</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">pop</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">peek</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">getMin</span> <span class="val o1">O(1)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>LIFO — Last In, First Out</h3>
+            <p>A stack is like a stack of plates: you can only add to the top (<code>push</code>) and remove from the top (<code>pop</code>). The last element pushed is the first one popped.</p>
+            <p class="muted">Used in: function call stack, expression evaluation, undo/redo, DFS, balanced parentheses checking.</p>
+          </div>
+          <div class="card">
+            <h3>The Min-Stack Trick</h3>
+            <p>Maintain a <b>parallel array</b> (<code>minData[]</code>) where each position stores the minimum value of all elements from the bottom of the stack up to that position.</p>
+            <ul class="tight">
+              <li><code>push(val)</code>: <code>minData[top] = min(val, minData[top-1])</code></li>
+              <li><code>pop()</code>: just decrement top — min pops automatically</li>
+              <li><code>getMin()</code>: return <code>minData[top]</code> — O(1)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Min-Stack — Parallel Tracking</h2></div>
+        <div class="viz">
+          <svg width="580" height="210">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+            <!-- Data stack label -->
+            <text x="90" y="16" text-anchor="middle" font-size="12" font-weight="600" fill="#2dd4bf">data[]</text>
+            <!-- Data stack cells (bottom to top) -->
+            <rect x="40" y="150" width="100" height="35" rx="6" class="node-box"/>
+            <text x="90" y="172" text-anchor="middle" font-size="13" fill="#b8c1cc">3</text>
+            <rect x="40" y="112" width="100" height="35" rx="6" class="node-box"/>
+            <text x="90" y="134" text-anchor="middle" font-size="13" fill="#b8c1cc">5</text>
+            <rect x="40" y="74" width="100" height="35" rx="6" class="node-box"/>
+            <text x="90" y="96" text-anchor="middle" font-size="13" fill="#b8c1cc">7</text>
+            <rect x="40" y="36" width="100" height="35" rx="6" class="node-hl"/>
+            <text x="90" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">1</text>
+            <!-- top pointer -->
+            <text x="8" y="58" text-anchor="middle" font-size="10" fill="#4ade80">top→</text>
+
+            <!-- Arrow between stacks -->
+            <text x="210" y="105" text-anchor="middle" font-size="18" fill="#8b95a3">⟷</text>
+
+            <!-- Min stack label -->
+            <text x="340" y="16" text-anchor="middle" font-size="12" font-weight="600" fill="#fbbf24">minData[]</text>
+            <!-- Min stack cells -->
+            <rect x="290" y="150" width="100" height="35" rx="6" class="node-box"/>
+            <text x="340" y="172" text-anchor="middle" font-size="13" fill="#fbbf24">3</text>
+            <rect x="290" y="112" width="100" height="35" rx="6" class="node-box"/>
+            <text x="340" y="134" text-anchor="middle" font-size="13" fill="#fbbf24">3</text>
+            <rect x="290" y="74" width="100" height="35" rx="6" class="node-box"/>
+            <text x="340" y="96" text-anchor="middle" font-size="13" fill="#fbbf24">3</text>
+            <rect x="290" y="36" width="100" height="35" rx="6" style="fill:rgba(251,191,36,.15);stroke:#fbbf24;stroke-width:2"/>
+            <text x="340" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="#fbbf24">1</text>
+
+            <!-- Annotations -->
+            <text x="440" y="58" font-size="10" fill="#4ade80">← getMin() = 1</text>
+            <text x="440" y="134" font-size="10" fill="#8b95a3">← min was 3 at this level</text>
+
+            <!-- Step labels on right -->
+            <text x="440" y="172" font-size="10" fill="#8b95a3">push(3): min=3</text>
+            <text x="440" y="96" font-size="10" fill="#8b95a3">push(7): min=3</text>
+            <text x="440" y="78" font-size="10" fill="#4ade80">push(1): min=1 ✓</text>
+          </svg>
+        </div>
+        <div class="callout tip" style="margin-top:12px"><b>Key insight:</b> Each level of <code>minData[]</code> records the minimum of everything below it (inclusive). When you pop, the previous minimum is automatically revealed at <code>minData[top-1]</code>. No re-scanning needed.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--ds)">push(value)</h3>
+            <ol class="tight">
+              <li>Check overflow: <code>top == capacity-1</code></li>
+              <li>Increment top</li>
+              <li><code>data[top] = value</code></li>
+              <li><code>minData[top] = min(value, minData[top-1])</code></li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">pop()</h3>
+            <ol class="tight">
+              <li>Check underflow: <code>top == -1</code></li>
+              <li>Save <code>data[top]</code></li>
+              <li>Null out both <code>data[top]</code> and <code>minData[top]</code></li>
+              <li>Decrement top, return saved value</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">setup</span></div>
+<pre class="code"><span class="kw">private</span> <span class="ty">Object</span>[] data;
+<span class="kw">private</span> <span class="ty">Object</span>[] minData;      <span class="cm">// tracks minimum at each level</span>
+<span class="kw">private int</span> top;
+
+<span class="kw">public</span> <span class="ty">MyStack</span>(<span class="kw">int</span> capacity) {
+    data = <span class="kw">new</span> <span class="ty">Object</span>[capacity];
+    minData = <span class="kw">new</span> <span class="ty">Object</span>[capacity];
+    top = -<span class="num">1</span>;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>push(value) — O(1)</h2><span class="tag">with min tracking</span></div>
+<pre class="code"><span class="kw">public void</span> push(<span class="ty">E</span> value) {
+    <span class="kw">if</span> (top == data.length - <span class="num">1</span>)
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"Stack overflow"</span>);
+    top++;
+    data[top] = value;
+
+    <span class="cm">// Track current minimum at this level</span>
+    <span class="kw">if</span> (top == <span class="num">0</span>) {
+        minData[top] = value;
+    } <span class="kw">else</span> {
+        <span class="ann">@SuppressWarnings</span>(<span class="st">"unchecked"</span>)
+        <span class="ty">E</span> currentMin = (<span class="ty">E</span>) minData[top - <span class="num">1</span>];
+        minData[top] = value.compareTo(currentMin) &lt; <span class="num">0</span>
+            ? value : currentMin;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>pop() — O(1)</h2><span class="tag">remove top</span></div>
+<pre class="code"><span class="ann">@SuppressWarnings</span>(<span class="st">"unchecked"</span>)
+<span class="kw">public</span> <span class="ty">E</span> pop() {
+    <span class="kw">if</span> (isEmpty())
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"Stack underflow"</span>);
+    <span class="ty">E</span> value = (<span class="ty">E</span>) data[top];
+    data[top] = <span class="kw">null</span>;
+    minData[top] = <span class="kw">null</span>;
+    top--;
+    <span class="kw">return</span> value;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>peek() &amp; getMin() — O(1)</h2><span class="tag">read top</span></div>
+        <div class="grid g2">
+          <div>
+<pre class="code"><span class="ann">@SuppressWarnings</span>(<span class="st">"unchecked"</span>)
+<span class="kw">public</span> <span class="ty">E</span> peek() {
+    <span class="kw">if</span> (isEmpty())
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(
+            <span class="st">"Stack is empty"</span>);
+    <span class="kw">return</span> (<span class="ty">E</span>) data[top];
+}</pre>
+          </div>
+          <div>
+<pre class="code"><span class="ann">@SuppressWarnings</span>(<span class="st">"unchecked"</span>)
+<span class="kw">public</span> <span class="ty">E</span> getMin() {
+    <span class="kw">if</span> (isEmpty())
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(
+            <span class="st">"Stack is empty"</span>);
+    <span class="kw">return</span> (<span class="ty">E</span>) minData[top];
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Utilities</h2><span class="tag">helpers</span></div>
+<pre class="code"><span class="kw">public boolean</span> isEmpty() { <span class="kw">return</span> top == -<span class="num">1</span>; }
+<span class="kw">public int</span> size()    { <span class="kw">return</span> top + <span class="num">1</span>; }</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.MyStack</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/MyStack.java</code> (81 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>push(val)</code></td><td><span class="o1">O(1)</span></td><td>Array index write + min comparison</td></tr>
+            <tr><td><code>pop()</code></td><td><span class="o1">O(1)</span></td><td>Array index read + decrement top</td></tr>
+            <tr><td><code>peek()</code></td><td><span class="o1">O(1)</span></td><td>Return <code>data[top]</code></td></tr>
+            <tr><td><code>getMin()</code></td><td><span class="o1">O(1)</span></td><td>Return <code>minData[top]</code> — precomputed</td></tr>
+            <tr><td>Space</td><td>O(n)</td><td>Two arrays of size n (data + minData)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Implement Queue using Stacks</h3></div>
+            <div class="c-body">
+              <p>Two stacks: <code>pushStack</code> for enqueue, <code>popStack</code> for dequeue. Transfer all from pushStack → popStack when popStack is empty — reverses order for FIFO. Amortized O(1). LeetCode #232. See the <a href="queue-using-stacks.html">Queue Using Stacks canvas</a>.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Browser back/forward</h3></div>
+            <div class="c-body">
+              <p>Two stacks: <code>backStack</code> and <code>forwardStack</code>. Navigate to URL → push current onto backStack. Back → pop from backStack, push onto forwardStack. Forward → pop from forwardStack, push onto backStack. Navigate to new URL → clear forwardStack.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Undo/Redo system</h3></div>
+            <div class="c-body">
+              <p>Same two-stack pattern as browser history. <code>undoStack</code> stores actions, <code>redoStack</code> stores undone actions. New action → clear redoStack. This is the Command pattern in OOP — each action is an object with <code>execute()</code> and <code>undo()</code> methods.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Balanced parentheses</h3></div>
+            <div class="c-body">
+              <p>Push opening brackets, pop on closing brackets. If pop result doesn't match → unbalanced. If stack not empty at end → unbalanced. Extend to <code>{}</code>, <code>[]</code>, <code>()</code>. O(n) time, O(n) space. LeetCode #20.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Stack overflow</b> — Fixed-size array means <code>push()</code> can overflow. Either throw an exception (our approach) or auto-resize like ArrayList. Java's <code>ArrayDeque</code>-based stack auto-resizes.</div>
+        <div class="callout"><b>Stack underflow</b> — <code>pop()</code> or <code>peek()</code> on an empty stack. Always check <code>isEmpty()</code> first or throw. The <code>top == -1</code> convention makes this check clean.</div>
+        <div class="callout tip"><b>getMin on empty stack</b> — Must throw or return a sentinel. Don't access <code>minData[-1]</code>. This edge case is commonly tested in interviews.</div>
+        <div class="callout info"><b>Space optimization:</b> Instead of storing min at every level, only push to minStack when the new value is ≤ current min. Pop from minStack only when the popped value equals the current min. Saves space when elements are mostly ascending.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/MyStack.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

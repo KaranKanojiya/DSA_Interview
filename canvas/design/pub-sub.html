@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP-03 · Pub/Sub System — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Design</a><span class="sep">›</span> Pub/Sub System</div>
+
+  <header class="hero">
+    <h1>Pub/Sub System — Implement from Scratch</h1>
+    <div class="sub">Topic-based message routing with <b>async delivery</b> via ExecutorService thread pool. Publishers and subscribers are fully decoupled — publishers don't know who consumes, subscribers don't know who produces. Uses <code>ConcurrentHashMap</code> + <code>CopyOnWriteArrayList</code> for thread safety.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium-Hard</span>
+      <span class="badge">Amazon · Google · Meta</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">subscribe()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">publish()</span> <span class="val on">O(k) k=subscribers</span></span>
+      <span class="cx"><span class="label">Delivery</span> <span class="val o1">Async (thread pool)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is Pub/Sub?</h3>
+            <p>A messaging pattern where <b>publishers</b> send messages to named <b>topics</b>, and <b>subscribers</b> register handlers for topics they care about. The pub/sub system acts as a <b>broker</b> — neither side knows about the other.</p>
+            <p class="muted">Real-world: Kafka, AWS SNS/SQS, Google Pub/Sub, Redis pub/sub.</p>
+          </div>
+          <div class="card">
+            <h3>Pub/Sub vs Observer</h3>
+            <ul class="tight">
+              <li><b>Observer:</b> synchronous, subject calls observers directly</li>
+              <li><b>Pub/Sub:</b> async via broker, full decoupling</li>
+              <li>Pub/Sub adds: topic routing, thread pool delivery, thread safety</li>
+              <li>Pub/Sub is the <b>distributed version</b> of Observer</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Architecture Diagram</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 900 350" width="900" height="350">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-hl" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#fb7185"/></marker>
+              <marker id="arr-ok" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+
+            <!-- ===== Publishers (left column) ===== -->
+            <text x="90" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fb7185">Publishers</text>
+
+            <rect x="20" y="35" width="160" height="46" rx="6" class="node-box"/>
+            <text x="100" y="55" text-anchor="middle" font-size="10" font-weight="600" fill="#e6edf3">OrderService</text>
+            <text x="100" y="71" text-anchor="middle" font-size="9" fill="#b8c1cc">publish("orders")</text>
+
+            <rect x="20" y="105" width="160" height="46" rx="6" class="node-box"/>
+            <text x="100" y="125" text-anchor="middle" font-size="10" font-weight="600" fill="#e6edf3">PaymentService</text>
+            <text x="100" y="141" text-anchor="middle" font-size="9" fill="#b8c1cc">publish("payments")</text>
+
+            <!-- Arrows: Publishers → Broker -->
+            <path d="M180,58 C220,58 230,115 270,115" stroke="#fb7185" stroke-width="1.5" fill="none" marker-end="url(#arr-hl)"/>
+            <path d="M180,128 C220,128 230,145 270,145" stroke="#fb7185" stroke-width="1.5" fill="none" marker-end="url(#arr-hl)"/>
+
+            <!-- ===== Broker (center) ===== -->
+            <rect x="280" y="50" width="280" height="230" rx="10" style="fill:rgba(251,113,133,.06);stroke:var(--design);stroke-width:1.5"/>
+            <text x="420" y="78" text-anchor="middle" font-size="12" font-weight="bold" fill="#fb7185">PubSubSystem (Broker)</text>
+
+            <!-- ConcurrentHashMap -->
+            <rect x="300" y="92" width="240" height="46" rx="6" class="node-box"/>
+            <text x="420" y="112" text-anchor="middle" font-size="10" fill="#fbbf24">ConcurrentHashMap</text>
+            <text x="420" y="128" text-anchor="middle" font-size="9" fill="#b8c1cc">topic → CopyOnWriteArrayList</text>
+
+            <!-- Topic: orders -->
+            <rect x="300" y="150" width="240" height="32" rx="6" class="node-hl"/>
+            <text x="420" y="171" text-anchor="middle" font-size="10" fill="#2dd4bf">"orders" → [handler1, handler2]</text>
+
+            <!-- Topic: payments -->
+            <rect x="300" y="194" width="240" height="32" rx="6" class="node-hl"/>
+            <text x="420" y="215" text-anchor="middle" font-size="10" fill="#2dd4bf">"payments" → [handler3]</text>
+
+            <!-- ExecutorService -->
+            <rect x="300" y="238" width="240" height="30" rx="6" style="fill:rgba(167,139,250,.1);stroke:var(--conc);stroke-width:1.5"/>
+            <text x="420" y="258" text-anchor="middle" font-size="10" fill="#a78bfa">ExecutorService (2 threads)</text>
+
+            <!-- ===== Subscribers (right column) ===== -->
+            <text x="740" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#4ade80">Subscribers</text>
+
+            <rect x="650" y="35" width="180" height="46" rx="6" class="node-hl"/>
+            <text x="740" y="55" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">EmailNotifier</text>
+            <text x="740" y="71" text-anchor="middle" font-size="9" fill="#b8c1cc">topic: "orders"</text>
+
+            <rect x="650" y="115" width="180" height="46" rx="6" class="node-hl"/>
+            <text x="740" y="135" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">InventoryService</text>
+            <text x="740" y="151" text-anchor="middle" font-size="9" fill="#b8c1cc">topic: "orders"</text>
+
+            <rect x="650" y="195" width="180" height="46" rx="6" class="node-hl"/>
+            <text x="740" y="215" text-anchor="middle" font-size="10" font-weight="600" fill="#2dd4bf">AuditLogger</text>
+            <text x="740" y="231" text-anchor="middle" font-size="9" fill="#b8c1cc">topic: "payments"</text>
+
+            <!-- Arrows: Broker → Subscribers (smooth curves avoiding overlap) -->
+            <path d="M560,166 C600,166 620,58 648,58" stroke="#4ade80" stroke-width="1.5" fill="none" marker-end="url(#arr-ok)"/>
+            <path d="M560,166 C600,166 620,138 648,138" stroke="#4ade80" stroke-width="1.5" fill="none" marker-end="url(#arr-ok)"/>
+            <path d="M560,210 C600,210 620,218 648,218" stroke="#4ade80" stroke-width="1.5" fill="none" marker-end="url(#arr-ok)"/>
+
+            <!-- "async" label — positioned clearly between broker and subscribers -->
+            <rect x="588" y="84" width="48" height="18" rx="4" style="fill:rgba(167,139,250,.15);stroke:none"/>
+            <text x="612" y="97" text-anchor="middle" font-size="9" font-weight="600" fill="#a78bfa">async</text>
+
+            <!-- Legend at bottom -->
+            <text x="450" y="310" text-anchor="middle" font-size="10" fill="#fb7185">publish() → executor.submit() → handler.accept(msg) on thread pool</text>
+            <text x="450" y="330" text-anchor="middle" font-size="10" fill="#b8c1cc">Publishers and subscribers are fully decoupled via the broker</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Thread Safety — Why ConcurrentHashMap + CopyOnWriteArrayList</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--accent)">ConcurrentHashMap</h3>
+            <ul class="tight">
+              <li>Thread-safe map — multiple threads can subscribe/publish concurrently</li>
+              <li>Lock striping — segments lock independently</li>
+              <li><code>computeIfAbsent</code> is atomic — no race on first subscribe</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--conc)">CopyOnWriteArrayList</h3>
+            <ul class="tight">
+              <li>Thread-safe list — iteration never throws CME</li>
+              <li>Writes create a new copy of the array</li>
+              <li>Perfect for read-heavy workloads (many publishes, rare subscribes)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout info" style="margin-top:12px"><b>Why not synchronized?</b> A global lock would serialize all publish/subscribe calls. ConcurrentHashMap allows concurrent access to different topics. CopyOnWriteArrayList allows safe iteration during publish while another thread subscribes.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Publish Flow — Step by Step</h2></div>
+        <div class="flow">
+          <div class="step design"><div class="box">publish(topic, msg)</div><small>caller thread</small></div>
+          <div class="step design"><div class="box">Get Handlers</div><small>subscribers.get(topic)<br>from ConcurrentHashMap</small></div>
+          <div class="step design"><div class="box">For Each Handler</div><small>executor.submit(() →<br>handler.accept(msg))</small></div>
+          <div class="step" style="flex:0.7"><div class="box" style="border-color:var(--conc);color:var(--conc)">Thread Pool</div><small>async delivery<br>on worker thread</small></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields — Thread-Safe Collections</h2><span class="tag">broker state</span></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">List</span>&lt;<span class="ty">Consumer</span>&lt;<span class="ty">String</span>&gt;&gt;&gt; subscribers
+        = <span class="kw">new</span> <span class="ty">ConcurrentHashMap</span>&lt;&gt;();
+<span class="kw">private final</span> <span class="ty">ExecutorService</span> executor
+        = <span class="ty">Executors</span>.newFixedThreadPool(<span class="num">2</span>);</pre>
+        <div class="callout tip"><b>Consumer&lt;String&gt;</b> — Handlers are simple functions that accept a message string. This makes subscribing with lambdas natural: <code>bus.subscribe("orders", msg -> ...)</code>.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>subscribe(topic, handler)</h2><span class="tag">register</span></div>
+<pre class="code"><span class="kw">public void</span> subscribe(<span class="ty">String</span> topic, <span class="ty">Consumer</span>&lt;<span class="ty">String</span>&gt; handler) {
+    subscribers.computeIfAbsent(topic, k -&gt; <span class="kw">new</span> <span class="ty">CopyOnWriteArrayList</span>&lt;&gt;())
+               .add(handler);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>publish(topic, message) — Async Delivery</h2><span class="tag">core logic</span></div>
+<pre class="code"><span class="kw">public void</span> publish(<span class="ty">String</span> topic, <span class="ty">String</span> message) {
+    <span class="kw">for</span> (<span class="ty">Consumer</span>&lt;<span class="ty">String</span>&gt; handler :
+            subscribers.getOrDefault(topic, <span class="ty">List</span>.of())) {
+        executor.submit(() -&gt; handler.accept(message));
+    }
+}</pre>
+        <div class="callout info"><b>executor.submit()</b> — Each handler runs on a thread pool worker, not the caller's thread. The publish call returns immediately. If a handler throws, it doesn't affect other handlers or the publisher.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>shutdown()</h2><span class="tag">cleanup</span></div>
+<pre class="code"><span class="kw">public void</span> shutdown() {
+    executor.shutdown();
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.design.PubSubSystem</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/design/PubSubSystem.java</code> (49 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>subscribe()</code></td><td class="o1">O(1)</td><td>ConcurrentHashMap lookup + CopyOnWriteArrayList add</td></tr>
+            <tr><td><code>publish()</code></td><td class="on">O(k)</td><td>Submits k tasks to thread pool — k = subscribers for topic</td></tr>
+            <tr><td><code>shutdown()</code></td><td class="o1">O(1)</td><td>Signals executor to stop accepting tasks</td></tr>
+            <tr><td>Space</td><td>O(T·S)</td><td>T topics × S avg subscribers per topic</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Message ordering guarantees?</h3></div>
+            <div class="c-body">
+              <p>With a thread pool, delivery order is <b>non-deterministic</b> — messages may arrive out of order at a subscriber. To guarantee order: use a <b>single-threaded executor per topic</b>, or assign each subscriber a dedicated queue with a single consumer thread. Kafka guarantees order within a partition.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Dead letter queue?</h3></div>
+            <div class="c-body">
+              <p>If a handler throws, the message is lost. A <b>dead letter queue (DLQ)</b> captures failed messages for retry or inspection. Wrap each handler in try-catch; on failure, add <code>(topic, message, exception)</code> to a DLQ. AWS SQS/SNS and RabbitMQ have built-in DLQ support.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>At-least-once vs exactly-once?</h3></div>
+            <div class="c-body">
+              <p><b>At-most-once:</b> fire and forget (current impl). <b>At-least-once:</b> retry on failure — may deliver duplicates. <b>Exactly-once:</b> requires idempotent consumers + deduplication (message IDs). Kafka achieves it with idempotent producers + transactional consumers. True exactly-once is the hardest distributed systems problem.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Distributed pub/sub (Kafka, SNS)?</h3></div>
+            <div class="c-body">
+              <p><b>Kafka:</b> Persistent log per topic-partition. Consumers track offsets. Enables replay. <b>SNS:</b> Push-based fan-out to SQS, Lambda, HTTP. <b>Redis:</b> In-memory pub/sub — no persistence, messages lost if no subscriber online. The in-process version here is the conceptual building block for all of these.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Publish to non-existent topic</b> — <code>getOrDefault(topic, List.of())</code> returns an empty list. No error, no delivery. Consider logging a warning for unregistered topics.</div>
+        <div class="callout"><b>Handler throws exception</b> — Since handlers run via <code>executor.submit()</code>, exceptions are silently swallowed (stored in the Future). Use <code>CompletableFuture.runAsync()</code> with <code>.exceptionally()</code> for visibility.</div>
+        <div class="callout tip"><b>Backpressure</b> — If publishers produce faster than subscribers consume, the executor's task queue grows unbounded → OOM. Use a bounded queue with a rejection policy (CallerRunsPolicy for natural backpressure).</div>
+        <div class="callout"><b>Shutdown timing</b> — <code>executor.shutdown()</code> waits for queued tasks to finish. Messages published <i>during</i> shutdown are still delivered. Use <code>shutdownNow()</code> for immediate stop (but may lose messages).</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/design/PubSubSystem.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

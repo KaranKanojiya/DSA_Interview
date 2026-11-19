@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A-07 · Immutable Builder — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Algorithms</a><span class="sep">›</span> Immutable Builder</div>
+
+  <header class="hero">
+    <h1>Immutable Class + Builder Pattern — Implement from Scratch</h1>
+    <div class="sub">Build a truly immutable class with <b>final class, private final fields, no setters, defensive copies</b> for mutable fields (using <code>List.copyOf</code>). Pair it with the <b>Builder pattern</b> for step-by-step construction: required params in constructor, optional params via fluent methods, <code>build()</code> returns a frozen object.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">Amazon · Google · Microsoft · Apple</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">build()</span> <span class="val o1">O(n)</span></span>
+      <span class="cx"><span class="label">Getters</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Thread safety</span> <span class="val o1">inherent</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Immutable Class — 5 Rules</h3>
+            <ol class="tight">
+              <li><b>final class</b> — prevent subclassing that could break guarantees</li>
+              <li><b>private final fields</b> — no reassignment after construction</li>
+              <li><b>No setters</b> — state cannot change</li>
+              <li><b>Defensive copies</b> — for mutable fields (List, Date, arrays), copy on input and output</li>
+              <li><b>Constructor or Builder</b> — all state set at creation time</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Builder Pattern — Why?</h3>
+            <ul class="tight">
+              <li>Avoids <b>telescoping constructors</b> — no <code>Person(name, age, null, null, hobbies, null)</code></li>
+              <li>Separates <b>required vs optional</b> params clearly</li>
+              <li><b>Fluent API</b>: <code>new Builder("K",30).hobby("X").build()</code></li>
+              <li>Returns a <b>frozen, immutable</b> object — safe to share across threads</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Builder Construction Flow</h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 830 270" width="830" height="270">
+            <defs>
+              <marker id="bldr-arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+            </defs>
+
+            <!-- Step 1: new Builder -->
+            <rect x="20" y="30" width="170" height="55" rx="6" fill="rgba(56,189,248,.10)" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="105" y="50" text-anchor="middle" font-size="10" fill="#38bdf8" font-weight="bold">REQUIRED PARAMS</text>
+            <text x="105" y="66" text-anchor="middle" font-size="11" fill="#e6edf3">new Builder("Karan", 30)</text>
+            <text x="105" y="80" text-anchor="middle" font-size="9" fill="#b8c1cc">name, age set in constructor</text>
+
+            <!-- Arrow -->
+            <line x1="190" y1="57" x2="225" y2="57" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#bldr-arr)"/>
+
+            <!-- Step 2: .hobby("Coding") -->
+            <rect x="230" y="30" width="160" height="55" rx="6" fill="rgba(251,191,36,.10)" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="310" y="50" text-anchor="middle" font-size="10" fill="#fbbf24" font-weight="bold">OPTIONAL</text>
+            <text x="310" y="66" text-anchor="middle" font-size="11" fill="#e6edf3">.hobby("Coding")</text>
+            <text x="310" y="80" text-anchor="middle" font-size="9" fill="#b8c1cc">returns this (fluent)</text>
+
+            <!-- Arrow -->
+            <line x1="390" y1="57" x2="425" y2="57" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#bldr-arr)"/>
+
+            <!-- Step 3: .hobby("Reading") -->
+            <rect x="430" y="30" width="160" height="55" rx="6" fill="rgba(251,191,36,.10)" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="510" y="50" text-anchor="middle" font-size="10" fill="#fbbf24" font-weight="bold">OPTIONAL</text>
+            <text x="510" y="66" text-anchor="middle" font-size="11" fill="#e6edf3">.hobby("Reading")</text>
+            <text x="510" y="80" text-anchor="middle" font-size="9" fill="#b8c1cc">returns this (fluent)</text>
+
+            <!-- Arrow -->
+            <line x1="590" y1="57" x2="625" y2="57" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#bldr-arr)"/>
+
+            <!-- Step 4: .build() -->
+            <rect x="630" y="30" width="170" height="55" rx="6" fill="rgba(45,212,191,.12)" stroke="#2dd4bf" stroke-width="2"/>
+            <text x="715" y="50" text-anchor="middle" font-size="10" fill="#2dd4bf" font-weight="bold">.build()</text>
+            <text x="715" y="66" text-anchor="middle" font-size="11" fill="#e6edf3">new ImmutablePerson(this)</text>
+            <text x="715" y="80" text-anchor="middle" font-size="9" fill="#b8c1cc">defensive copy happens here</text>
+
+            <!-- Arrow down to frozen object -->
+            <line x1="715" y1="85" x2="715" y2="118" stroke="#2dd4bf" stroke-width="1.5" marker-end="url(#bldr-arr)"/>
+
+            <!-- Frozen ImmutablePerson -->
+            <rect x="530" y="122" width="370" height="130" rx="8" fill="rgba(45,212,191,.08)" stroke="#2dd4bf" stroke-width="2"/>
+            <text x="715" y="144" text-anchor="middle" font-size="12" fill="#2dd4bf" font-weight="bold">ImmutablePerson (frozen)</text>
+
+            <rect x="550" y="156" width="150" height="34" rx="6" class="node-box"/>
+            <text x="625" y="170" text-anchor="middle" font-size="10" fill="#38bdf8">final String name</text>
+            <text x="625" y="183" text-anchor="middle" font-size="10" fill="#b8c1cc">"Karan"</text>
+
+            <rect x="720" y="156" width="160" height="34" rx="6" class="node-box"/>
+            <text x="800" y="170" text-anchor="middle" font-size="10" fill="#38bdf8">final int age</text>
+            <text x="800" y="183" text-anchor="middle" font-size="10" fill="#b8c1cc">30</text>
+
+            <rect x="550" y="200" width="330" height="40" rx="6" fill="rgba(248,113,113,.08)" stroke="#f87171" stroke-width="1.5"/>
+            <text x="715" y="217" text-anchor="middle" font-size="10" fill="#f87171" font-weight="bold">final List&lt;String&gt; hobbies (List.copyOf)</text>
+            <text x="715" y="232" text-anchor="middle" font-size="10" fill="#b8c1cc">["Coding", "Reading"] — unmodifiable</text>
+
+            <!-- Left side: mutable builder state -->
+            <rect x="20" y="110" width="380" height="142" rx="8" fill="var(--panel-2)" stroke="var(--border)" stroke-width="1"/>
+            <text x="35" y="132" font-size="11" fill="#fbbf24" font-weight="bold">BUILDER STATE (mutable during construction)</text>
+
+            <rect x="40" y="146" width="150" height="34" rx="6" class="node-box"/>
+            <text x="115" y="160" text-anchor="middle" font-size="10" fill="#b8c1cc">String name</text>
+            <text x="115" y="173" text-anchor="middle" font-size="10" fill="#e6edf3">"Karan"</text>
+
+            <rect x="210" y="146" width="120" height="34" rx="6" class="node-box"/>
+            <text x="270" y="160" text-anchor="middle" font-size="10" fill="#b8c1cc">int age</text>
+            <text x="270" y="173" text-anchor="middle" font-size="10" fill="#e6edf3">30</text>
+
+            <rect x="40" y="192" width="340" height="48" rx="6" fill="rgba(251,191,36,.08)" stroke="#fbbf24" stroke-width="1"/>
+            <text x="210" y="210" text-anchor="middle" font-size="10" fill="#fbbf24">ArrayList&lt;String&gt; hobbies (mutable!)</text>
+            <text x="210" y="226" text-anchor="middle" font-size="10" fill="#b8c1cc">["Coding", "Reading"] — can still add()</text>
+
+            <!-- Arrow from builder to frozen -->
+            <line x1="400" y1="180" x2="528" y2="180" stroke="#2dd4bf" stroke-width="1.5" stroke-dasharray="6 3" marker-end="url(#bldr-arr)"/>
+            <text x="464" y="172" text-anchor="middle" font-size="9" fill="#2dd4bf">List.copyOf()</text>
+          </svg>
+        </div>
+        <div class="callout tip" style="margin-top:12px"><b>Defensive copy is the key.</b> The Builder's <code>hobbies</code> is a mutable <code>ArrayList</code>. On <code>build()</code>, we call <code>List.copyOf(builder.hobbies)</code> — the immutable object gets its own unmodifiable snapshot. Later changes to the Builder don't affect the built object.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Immutability Rules Walkthrough</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--algo)">final class</h3>
+            <p>Prevents a subclass from adding a setter or overriding a getter to return mutable state. Ensures the immutability contract can't be broken by inheritance.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--ok)">private final fields</h3>
+            <p><code>private</code> — no direct access from outside. <code>final</code> — the reference can't be reassigned after the constructor. Combined: fields are locked at construction time.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--warn)">Defensive copy — why?</h3>
+            <p>Without <code>List.copyOf()</code>, the caller could keep a reference to the original list and mutate it after construction:<br>
+            <code>list.add("Evil")</code> → the "immutable" object's hobbies change. Defensive copy breaks this link.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">No setters, ever</h3>
+            <p>An immutable object has <b>zero mutation methods</b>. Need a modified version? Create a new object via the Builder: <code>new Builder(old).hobby("New").build()</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>What Happens on Modification Attempt?</h2></div>
+        <div class="flow">
+          <div class="step algo"><div class="box">person.getHobbies()</div><small>returns List.copyOf<br>(unmodifiable)</small></div>
+          <div class="step algo"><div class="box">.add("Hacking")</div><small>attempt to mutate<br>the list</small></div>
+          <div class="step" style="flex:0.8"><div class="box" style="border-color:var(--warn);color:var(--warn)">UnsupportedOperation<br>Exception!</div><small>List.copyOf is<br>unmodifiable</small></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>ImmutablePerson — The Immutable Class</h2><span class="tag">final class</span></div>
+        <p class="muted">All 5 immutability rules applied: final class, private final fields, no setters, defensive copy, private constructor (use Builder).</p>
+<pre class="code"><span class="kw">public final class</span> <span class="ty">ImmutableClassBuilder</span> {
+
+    <span class="kw">static final class</span> <span class="ty">ImmutablePerson</span> {
+        <span class="kw">private final</span> <span class="ty">String</span> name;
+        <span class="kw">private final int</span> age;
+        <span class="kw">private final</span> <span class="ty">List</span>&lt;<span class="ty">String</span>&gt; hobbies;
+
+        <span class="cm">// Private constructor — use Builder</span>
+        <span class="kw">private</span> <span class="ty">ImmutablePerson</span>(<span class="ty">Builder</span> builder) {
+            <span class="kw">this</span>.name = builder.name;
+            <span class="kw">this</span>.age = builder.age;
+            <span class="kw">this</span>.hobbies = <span class="ty">List</span>.copyOf(builder.hobbies);  <span class="cm">// defensive copy</span>
+        }
+
+        <span class="cm">// Getters only — no setters</span>
+        <span class="kw">public</span> <span class="ty">String</span> getName() { <span class="kw">return</span> name; }
+        <span class="kw">public int</span> getAge() { <span class="kw">return</span> age; }
+        <span class="kw">public</span> <span class="ty">List</span>&lt;<span class="ty">String</span>&gt; getHobbies() { <span class="kw">return</span> hobbies; }
+
+        <span class="ann">@Override</span>
+        <span class="kw">public</span> <span class="ty">String</span> toString() {
+            <span class="kw">return</span> <span class="st">"Person{name='"</span> + name + <span class="st">"', age="</span> + age
+                   + <span class="st">", hobbies="</span> + hobbies + <span class="st">"}"</span>;
+        }
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Builder — Fluent Construction</h2><span class="tag">inner class</span></div>
+        <p class="muted">Required params in the Builder constructor. Optional params via chainable methods. <code>build()</code> creates the immutable object.</p>
+<pre class="code"><span class="kw">static class</span> <span class="ty">Builder</span> {
+    <span class="kw">private</span> <span class="ty">String</span> name;                              <span class="cm">// required</span>
+    <span class="kw">private int</span> age;                                   <span class="cm">// required</span>
+    <span class="kw">private</span> <span class="ty">List</span>&lt;<span class="ty">String</span>&gt; hobbies = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;(); <span class="cm">// optional</span>
+
+    <span class="cm">// Required params go in constructor</span>
+    <span class="ty">Builder</span>(<span class="ty">String</span> name, <span class="kw">int</span> age) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.age = age;
+    }
+
+    <span class="cm">// Optional — fluent chaining (returns this)</span>
+    <span class="ty">Builder</span> hobby(<span class="ty">String</span> hobby) {
+        hobbies.add(hobby);
+        <span class="kw">return this</span>;
+    }
+
+    <span class="ty">Builder</span> hobbies(<span class="ty">List</span>&lt;<span class="ty">String</span>&gt; hobbies) {
+        <span class="kw">this</span>.hobbies.addAll(hobbies);
+        <span class="kw">return this</span>;
+    }
+
+    <span class="cm">// Terminal — creates the immutable object</span>
+    <span class="ty">ImmutablePerson</span> build() {
+        <span class="kw">return new</span> <span class="ty">ImmutablePerson</span>(<span class="kw">this</span>);
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Main — Demo &amp; Mutation Test</h2><span class="tag">runnable</span></div>
+<pre class="code"><span class="kw">public static void</span> main(<span class="ty">String</span>[] args) {
+    <span class="cm">// Build immutable person</span>
+    <span class="ty">ImmutablePerson</span> person = <span class="kw">new</span> <span class="ty">ImmutablePerson.Builder</span>(<span class="st">"Karan"</span>, <span class="num">30</span>)
+            .hobby(<span class="st">"Coding"</span>)
+            .hobby(<span class="st">"Reading"</span>)
+            .build();
+    System.out.println(<span class="st">"Created: "</span> + person);
+
+    <span class="cm">// Try to modify — fails!</span>
+    <span class="kw">try</span> {
+        person.getHobbies().add(<span class="st">"Hacking"</span>);
+    } <span class="kw">catch</span> (<span class="ty">UnsupportedOperationException</span> e) {
+        System.out.println(<span class="st">"Cannot modify: "</span> + e.getClass().getSimpleName());
+    }
+    System.out.println(<span class="st">"After attempt: "</span> + person);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.algorithms.ImmutableClassBuilder</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/algorithms/ImmutableClassBuilder.java</code> (90 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>Builder.hobby(h)</code></td><td class="o1">O(1)</td><td>ArrayList.add amortized O(1)</td></tr>
+            <tr><td><code>Builder.build()</code></td><td class="on">O(n)</td><td><code>List.copyOf()</code> copies n hobbies</td></tr>
+            <tr><td><code>getName()</code></td><td class="o1">O(1)</td><td>String is already immutable — no copy needed</td></tr>
+            <tr><td><code>getHobbies()</code></td><td class="o1">O(1)</td><td>Returns the unmodifiable list directly (already safe)</td></tr>
+            <tr><td>Thread safety</td><td class="o1">inherent</td><td>No shared mutable state — safe to publish to any thread</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Java Records as lightweight immutables?</h3></div>
+            <div class="c-body">
+              <p><code>record Person(String name, int age, List&lt;String&gt; hobbies) {}</code> — Java 16+ gives you <code>final</code> class, <code>private final</code> fields, auto getters, <code>equals/hashCode/toString</code> for free. Caveat: the record doesn't do defensive copying — <code>List.copyOf()</code> still must be done in a compact constructor. Records are great for DTOs but can't extend classes.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Lombok @Builder?</h3></div>
+            <div class="c-body">
+              <p>Lombok's <code>@Builder</code> annotation auto-generates the Builder class at compile time via annotation processing. Combine with <code>@Value</code> (immutable) for both patterns. Trade-off: hides the code — you can't see the Builder in your source. Interviewers want you to write it by hand to prove you understand the mechanics.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Immutable collections — List.of, Map.of?</h3></div>
+            <div class="c-body">
+              <p>Java 9+ factory methods: <code>List.of(1,2,3)</code>, <code>Map.of("a",1)</code>, <code>Set.of()</code>. These return truly unmodifiable collections — no <code>add()</code>, <code>put()</code>, or <code>remove()</code>. They also disallow <code>null</code> elements. <code>List.copyOf()</code> creates an unmodifiable copy of an existing collection. Use these in immutable classes instead of wrapping with <code>Collections.unmodifiableList()</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Why is String immutable?</h3></div>
+            <div class="c-body">
+              <p>String is <code>final</code> with a <code>private final byte[]</code> value. Benefits: <b>string pool caching</b> (safe to share references), <b>thread safety</b> (no synchronization needed), <b>hash code caching</b> (computed once, used in HashMap keys), <b>security</b> (class loading, network connections use Strings — mutability would be a vulnerability). This is the most-asked "why" question about Java.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Copy-on-write pattern?</h3></div>
+            <div class="c-body">
+              <p>Instead of always copying, share the underlying data and only copy when a mutation is requested. <code>CopyOnWriteArrayList</code> does this: reads see the current snapshot, writes create a new array. Useful when reads vastly outnumber writes. Persistent data structures (Clojure's PersistentVector) use structural sharing for O(log n) copy-on-write.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Forgetting defensive copy</b> — The #1 mistake. If you assign <code>this.hobbies = builder.hobbies</code> directly, the caller's list and the object share a reference. Mutation via the original list breaks immutability silently.</div>
+        <div class="callout"><b>Date/Calendar fields</b> — These are mutable! For <code>Date birthDate</code>, you need <code>new Date(builder.birthDate.getTime())</code> in constructor AND <code>new Date(birthDate.getTime())</code> in the getter. Better: use <code>LocalDate</code> (Java 8+ immutable time API).</div>
+        <div class="callout tip"><b>Arrays are always mutable</b> — <code>final int[] scores</code> means the reference is final, but the contents are mutable. Always <code>Arrays.copyOf()</code> in constructor and getter, or use <code>List.of()</code> instead.</div>
+        <div class="callout info"><b>Builder reuse</b> — Can you call <code>build()</code> twice on the same Builder? With <code>List.copyOf()</code>, yes — each call creates a separate snapshot. Without defensive copy, both objects would share the same mutable list.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Immutability Techniques Compared</h2></div>
+        <table>
+          <thead><tr><th>Approach</th><th>Boilerplate</th><th>Truly Immutable?</th><th>Builder?</th></tr></thead>
+          <tbody>
+            <tr><td>Manual (this repo)</td><td style="color:var(--warn)">High</td><td style="color:var(--ok)">Yes — full control</td><td>Yes — hand-written</td></tr>
+            <tr><td><code>record</code> (Java 16+)</td><td style="color:var(--ok)">Very low</td><td style="color:var(--cache)">Partial — no auto defensive copy</td><td>No built-in</td></tr>
+            <tr><td>Lombok <code>@Value + @Builder</code></td><td style="color:var(--ok)">Very low</td><td style="color:var(--cache)">Partial — depends on config</td><td>Yes — generated</td></tr>
+            <tr><td><code>Collections.unmodifiableList</code></td><td style="color:var(--ok)">Low</td><td style="color:var(--warn)">No — wrapper only, original still mutable</td><td>N/A</td></tr>
+            <tr><td><code>List.copyOf</code> (Java 10+)</td><td style="color:var(--ok)">Low</td><td style="color:var(--ok)">Yes — true copy</td><td>N/A</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/algorithms/ImmutableClassBuilder.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

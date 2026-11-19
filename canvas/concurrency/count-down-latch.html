@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC-06 · CountDown Latch — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Concurrency</a><span class="sep">›</span> CountDown Latch</div>
+
+  <header class="hero">
+    <h1>CountDown Latch — Implement from Scratch</h1>
+    <div class="sub">One-shot synchronizer. Threads block on <b>await()</b> until count reaches zero via <b>countDown()</b>. Cannot be reset (unlike CyclicBarrier). Used for the "wait for N tasks to complete" pattern — service startup, parallel test coordination, map-reduce barriers.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Medium-Hard</span>
+      <span class="badge">Google · Amazon</span>
+      <span class="badge">~54 lines</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">countDown()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">await()</span> <span class="val o1">O(1) per check</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(1)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a CountDown Latch?</h3>
+            <p>A <b>gate</b> that stays closed until a counter reaches zero. Worker threads call <code>countDown()</code> to decrement the counter. Waiting threads call <code>await()</code> and block until the gate opens (count = 0).</p>
+            <p class="muted">Once opened, the gate stays open forever — a latch is <b>one-shot</b>.</p>
+          </div>
+          <div class="card">
+            <h3>Why build from scratch?</h3>
+            <ul class="tight">
+              <li>Tests understanding of <b>synchronized + wait/notifyAll</b></li>
+              <li>Simple but reveals edge cases: count=0 at start, multiple awaiters</li>
+              <li>Leads to follow-up: "now implement CyclicBarrier" (reusable)</li>
+              <li>Only ~20 lines of logic — but the concurrency reasoning matters</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Latch Flow Diagram</h2></div>
+        <div class="flow">
+          <div class="step conc"><div class="box">N Workers</div><small>each calls<br>countDown()</small></div>
+          <div class="step conc"><div class="box">Latch (count)</div><small>count → 0<br>notifyAll()</small></div>
+          <div class="step conc"><div class="box">Main Thread</div><small>await() returns<br>continues work</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg width="700" height="260">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/></marker>
+              <marker id="arr-g" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+            </defs>
+            <!-- Workers -->
+            <rect x="20" y="20" width="110" height="36" rx="8" fill="rgba(167,139,250,.15)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="75" y="43" text-anchor="middle" font-size="12" font-weight="600" fill="#a78bfa">Worker 1</text>
+            <rect x="20" y="70" width="110" height="36" rx="8" fill="rgba(167,139,250,.15)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="75" y="93" text-anchor="middle" font-size="12" font-weight="600" fill="#a78bfa">Worker 2</text>
+            <rect x="20" y="120" width="110" height="36" rx="8" fill="rgba(167,139,250,.15)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="75" y="143" text-anchor="middle" font-size="12" font-weight="600" fill="#a78bfa">Worker 3</text>
+            <!-- Arrows to latch -->
+            <line x1="130" y1="38" x2="255" y2="80" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr)"/>
+            <line x1="130" y1="88" x2="255" y2="88" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr)"/>
+            <line x1="130" y1="138" x2="255" y2="96" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="195" y="68" text-anchor="middle" font-size="10" fill="#a78bfa">countDown()</text>
+            <!-- Latch gate -->
+            <rect x="260" y="55" width="160" height="65" rx="10" fill="rgba(167,139,250,.1)" stroke="#a78bfa" stroke-width="2"/>
+            <text x="340" y="78" text-anchor="middle" font-size="13" font-weight="600" fill="#a78bfa">Latch</text>
+            <text x="340" y="95" text-anchor="middle" font-size="11" fill="#b8c1cc">count: 3 → 2 → 1 → 0</text>
+            <text x="340" y="112" text-anchor="middle" font-size="10" fill="#4ade80">notifyAll() when 0</text>
+            <!-- Arrow to main -->
+            <line x1="420" y1="88" x2="510" y2="88" stroke="#4ade80" stroke-width="2" marker-end="url(#arr-g)"/>
+            <text x="465" y="80" text-anchor="middle" font-size="10" fill="#4ade80">gate opens</text>
+            <!-- Main thread -->
+            <rect x="515" y="65" width="150" height="46" rx="10" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="2"/>
+            <text x="590" y="84" text-anchor="middle" font-size="12" font-weight="600" fill="#4ade80">Main Thread</text>
+            <text x="590" y="100" text-anchor="middle" font-size="10" fill="#b8c1cc">await() → continues</text>
+            <!-- Timeline -->
+            <line x1="30" y1="195" x2="670" y2="195" stroke="#4b5563" stroke-width="1.5"/>
+            <text x="30" y="188" font-size="10" fill="#8b95a3">time →</text>
+            <circle cx="150" cy="195" r="5" fill="#a78bfa"/><text x="150" y="218" text-anchor="middle" font-size="10" fill="#a78bfa">W1 done</text>
+            <circle cx="300" cy="195" r="5" fill="#a78bfa"/><text x="300" y="218" text-anchor="middle" font-size="10" fill="#a78bfa">W2 done</text>
+            <circle cx="450" cy="195" r="5" fill="#a78bfa"/><text x="450" y="218" text-anchor="middle" font-size="10" fill="#a78bfa">W3 done</text>
+            <circle cx="450" cy="195" r="8" fill="none" stroke="#4ade80" stroke-width="2"/>
+            <text x="450" y="240" text-anchor="middle" font-size="10" fill="#4ade80">count=0 → gate opens</text>
+            <rect x="460" y="190" width="180" height="10" rx="3" fill="rgba(74,222,128,.2)"/>
+            <text x="550" y="215" text-anchor="middle" font-size="10" fill="#4ade80">main continues</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>One-Shot vs Reusable</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--conc)">CountDownLatch (one-shot)</h3>
+            <ul class="tight">
+              <li>Count goes down to 0, gate opens <b>permanently</b></li>
+              <li>Cannot be reset — create a new instance</li>
+              <li>N workers count down, M threads await</li>
+              <li>Use: "wait for N tasks to finish"</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--algo)">CyclicBarrier (reusable)</h3>
+            <ul class="tight">
+              <li>All N threads must arrive at the barrier</li>
+              <li><b>Resets</b> after all threads pass — reusable for rounds</li>
+              <li>All threads wait for each other (symmetric)</li>
+              <li>Use: "all threads synchronize at a checkpoint"</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout info"><b>Key difference:</b> CountDownLatch is <b>asymmetric</b> (some threads count down, others await). CyclicBarrier is <b>symmetric</b> (all threads wait for each other). Phaser combines both and supports dynamic registration.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Real-World Uses</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Service Startup</h3>
+            <p class="muted">Main thread creates latch(N) where N = number of subsystems. Each subsystem signals ready via <code>countDown()</code>. Server begins accepting requests only after <code>await()</code> returns.</p>
+          </div>
+          <div class="card">
+            <h3>Parallel Test Coordination</h3>
+            <p class="muted">Launch N threads, have them all wait on a "start" latch(1). Test driver calls <code>countDown()</code> and all threads race simultaneously — ensures a true concurrent start.</p>
+          </div>
+          <div class="card">
+            <h3>Map-Reduce Barrier</h3>
+            <p class="muted">Map phase: each mapper counts down when done. Reduce phase: awaits all mappers. Simple barrier for batch parallel processing.</p>
+          </div>
+          <div class="card">
+            <h3>Health Check Gate</h3>
+            <p class="muted">Microservice waits for DB, cache, and message broker connections before marking itself healthy. Latch(3), each dependency counts down on connect.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields &amp; Constructor</h2><span class="tag">state</span></div>
+        <p class="muted">A single <code>int count</code> field protected by <code>synchronized</code>. Constructor validates non-negative count.</p>
+<pre class="code"><span class="kw">public class</span> <span class="ty">MyCountDownLatch</span> {
+
+    <span class="kw">private int</span> count;
+
+    <span class="kw">public</span> <span class="ty">MyCountDownLatch</span>(<span class="kw">int</span> count) {
+        <span class="kw">if</span> (count &lt; <span class="num">0</span>) <span class="kw">throw new</span> <span class="ty">IllegalArgumentException</span>();
+        <span class="kw">this</span>.count = count;
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>countDown() — Decrement</h2><span class="tag">worker calls this</span></div>
+        <p class="muted">Decrements count. When it hits zero, <code>notifyAll()</code> wakes every thread blocked in <code>await()</code>. Calling <code>countDown()</code> when already zero is a no-op — safe and idempotent.</p>
+<pre class="code"><span class="kw">public synchronized void</span> countDown() {
+    <span class="kw">if</span> (count &gt; <span class="num">0</span>) {
+        count--;
+        <span class="kw">if</span> (count == <span class="num">0</span>) {
+            notifyAll();   <span class="cm">// wake all waiting threads</span>
+        }
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>await() — Block Until Zero</h2><span class="tag">main thread calls this</span></div>
+        <p class="muted">Blocks the calling thread until count reaches zero. Uses <code>while</code> loop to guard against spurious wakeups. If count is already zero, returns immediately.</p>
+<pre class="code"><span class="kw">public synchronized void</span> await() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="kw">while</span> (count &gt; <span class="num">0</span>) {
+        wait();            <span class="cm">// release monitor, sleep until notified</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>getCount() — Observe</h2><span class="tag">utility</span></div>
+<pre class="code"><span class="kw">public synchronized int</span> getCount() {
+    <span class="kw">return</span> count;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>main() — Demo</h2><span class="tag">demo</span></div>
+        <p class="muted">3 worker threads count down at staggered intervals. Main thread waits, then continues after all workers finish.</p>
+<pre class="code"><span class="kw">public static void</span> main(<span class="ty">String</span>[] args) <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="ty">MyCountDownLatch</span> latch = <span class="kw">new</span> <span class="ty">MyCountDownLatch</span>(<span class="num">3</span>);
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">1</span>; i &lt;= <span class="num">3</span>; i++) {
+        <span class="kw">final int</span> id = i;
+        <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">try</span> { <span class="ty">Thread</span>.sleep(id * <span class="num">200</span>); }
+            <span class="kw">catch</span> (<span class="ty">InterruptedException</span> e) {}
+            <span class="ty">System</span>.out.println(<span class="st">"  Worker "</span> + id + <span class="st">" done → countDown()"</span>);
+            latch.countDown();
+        }).start();
+    }
+
+    <span class="ty">System</span>.out.println(<span class="st">"Main thread waiting..."</span>);
+    latch.await();
+    <span class="ty">System</span>.out.println(<span class="st">"All workers done — main thread continues!"</span>);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.concurrency.MyCountDownLatch</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/concurrency/MyCountDownLatch.java</code> (54 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>countDown()</code></td><td class="o1">O(1)</td><td>Decrement + conditional notifyAll — constant work</td></tr>
+            <tr><td><code>await()</code></td><td class="o1">O(1) per check</td><td>Blocks on monitor; each wakeup rechecks count in O(1)</td></tr>
+            <tr><td><code>getCount()</code></td><td class="o1">O(1)</td><td>Simple field read under synchronized</td></tr>
+            <tr><td>Space</td><td>O(1)</td><td>Single int field — no data structure needed</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>CyclicBarrier vs CountDownLatch vs Phaser?</h3></div>
+            <div class="c-body">
+              <table>
+                <thead><tr><th>Feature</th><th>CountDownLatch</th><th>CyclicBarrier</th><th>Phaser</th></tr></thead>
+                <tbody>
+                  <tr><td>Reusable?</td><td>No (one-shot)</td><td>Yes (auto-reset)</td><td>Yes (phases)</td></tr>
+                  <tr><td>Who waits?</td><td>Separate awaiters</td><td>All participants</td><td>Registered parties</td></tr>
+                  <tr><td>Dynamic parties?</td><td>No</td><td>No</td><td>Yes (register/deregister)</td></tr>
+                  <tr><td>Barrier action?</td><td>No</td><td>Optional Runnable</td><td>Optional onAdvance()</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Implement CyclicBarrier?</h3></div>
+            <div class="c-body">
+              <p>Track <code>parties</code> (total) and <code>waiting</code> (arrived). Each thread increments <code>waiting</code> and calls <code>wait()</code>. When <code>waiting == parties</code>, run the barrier action, reset <code>waiting = 0</code>, and <code>notifyAll()</code>. Use a <b>generation</b> counter to handle the reset cycle correctly — threads from different rounds must not interfere.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Phaser — the flexible version?</h3></div>
+            <div class="c-body">
+              <p>Phaser supports dynamic registration (<code>register()</code> / <code>arriveAndDeregister()</code>), multiple phases, and hierarchical phasers for scalability. It's the most flexible but also the most complex. Think of it as a reusable latch where the number of participants can change between rounds.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Await with timeout?</h3></div>
+            <div class="c-body">
+              <p>Add an overload: <code>await(long timeout, TimeUnit unit)</code>. Use <code>wait(millis)</code> with a deadline. After waking, check if count is 0 OR the deadline has passed. Return <code>boolean</code> indicating whether count reached zero. Java's real <code>CountDownLatch</code> supports this.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout tip"><b>count = 0 at start</b> — <code>await()</code> returns immediately. The while-loop condition <code>count &gt; 0</code> is false from the start. This is valid and intentional — useful for conditional coordination where sometimes no waiting is needed.</div>
+        <div class="callout"><b>Multiple await callers</b> — Multiple threads can call <code>await()</code>. When count hits zero, <code>notifyAll()</code> wakes all of them. All proceed simultaneously. This is by design — latches are "one-to-many" gates.</div>
+        <div class="callout"><b>countDown below 0</b> — Our implementation guards with <code>if (count &gt; 0)</code>, so extra countDown calls are harmless no-ops. Without this guard, count could go negative, and the latch would still work (while-loop checks <code>count &gt; 0</code>), but negative count is semantically wrong.</div>
+        <div class="callout info"><b>Cannot reset</b> — Unlike CyclicBarrier, a latch that has reached zero stays at zero forever. Any future <code>await()</code> call returns immediately. To "reset", create a new <code>MyCountDownLatch</code> instance.</div>
+      </section>
+
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/concurrency/MyCountDownLatch.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

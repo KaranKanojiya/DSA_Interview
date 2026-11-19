@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-02 · Doubly Linked List — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> Linked List</div>
+
+  <header class="hero">
+    <h1>Doubly Linked List — Implement from Scratch</h1>
+    <div class="sub">Each node has <b>value + prev + next</b>. Supports addFirst, addLast, removeFirst, removeLast, reverse. The foundation for LRU caches, browser history, undo/redo systems, and deque implementations. LeetCode #707.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">LeetCode #707</span>
+      <span class="badge">Amazon · Microsoft · Meta</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">addFirst</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">addLast</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">get</span> <span class="val on">O(n)</span></span>
+      <span class="cx"><span class="label">remove</span> <span class="val on">O(n)</span></span>
+      <span class="cx"><span class="label">reverse</span> <span class="val on">O(n)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Doubly Linked List?</h3>
+            <p>A linear collection where each <b>node</b> stores a value and two pointers: <code>prev</code> (previous node) and <code>next</code> (next node). The list maintains <code>head</code> and <code>tail</code> references for O(1) access to both ends.</p>
+            <p class="muted">Unlike arrays, there's no random access — you must traverse from head or tail to reach a specific index.</p>
+          </div>
+          <div class="card">
+            <h3>Singly vs Doubly</h3>
+            <table>
+              <thead><tr><th></th><th>Singly</th><th>Doubly</th></tr></thead>
+              <tbody>
+                <tr><td>Pointers</td><td>next only</td><td>prev + next</td></tr>
+                <tr><td>removeLast</td><td><span class="on">O(n)</span></td><td><span class="o1">O(1)</span></td></tr>
+                <tr><td>Remove given node</td><td><span class="on">O(n)</span></td><td><span class="o1">O(1)</span></td></tr>
+                <tr><td>Traverse backward</td><td>Not possible</td><td>O(n) from tail</td></tr>
+                <tr><td>Memory per node</td><td>1 pointer</td><td>2 pointers</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Node Structure — Doubly Linked</h2></div>
+        <div class="viz">
+          <svg width="700" height="110">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-hl" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#2dd4bf"/></marker>
+            </defs>
+            <!-- HEAD label -->
+            <text x="40" y="16" text-anchor="middle" font-size="11" fill="#4ade80">head</text>
+            <line x1="40" y1="20" x2="40" y2="32" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-hl)"/>
+            <!-- Node A -->
+            <rect x="5" y="35" width="70" height="45" rx="6" class="node-hl"/>
+            <text x="40" y="53" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">A</text>
+            <text x="40" y="72" text-anchor="middle" font-size="9" fill="#b8c1cc">prev=null</text>
+            <!-- Forward arrows A→B -->
+            <line x1="75" y1="50" x2="125" y2="50" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <!-- Backward arrows B→A -->
+            <line x1="125" y1="65" x2="75" y2="65" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr)"/>
+            <!-- Node B -->
+            <rect x="130" y="35" width="70" height="45" rx="6" class="node-box"/>
+            <text x="165" y="55" text-anchor="middle" font-size="13" fill="#b8c1cc">B</text>
+            <!-- Forward B→C -->
+            <line x1="200" y1="50" x2="250" y2="50" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <!-- Backward C→B -->
+            <line x1="250" y1="65" x2="200" y2="65" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr)"/>
+            <!-- Node C -->
+            <rect x="255" y="35" width="70" height="45" rx="6" class="node-box"/>
+            <text x="290" y="55" text-anchor="middle" font-size="13" fill="#b8c1cc">C</text>
+            <!-- Forward C→D -->
+            <line x1="325" y1="50" x2="375" y2="50" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <!-- Backward D→C -->
+            <line x1="375" y1="65" x2="325" y2="65" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr)"/>
+            <!-- Node D -->
+            <rect x="380" y="35" width="70" height="45" rx="6" class="node-hl"/>
+            <text x="415" y="53" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">D</text>
+            <text x="415" y="72" text-anchor="middle" font-size="9" fill="#b8c1cc">next=null</text>
+            <!-- TAIL label -->
+            <text x="415" y="16" text-anchor="middle" font-size="11" fill="#4ade80">tail</text>
+            <line x1="415" y1="20" x2="415" y2="32" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-hl)"/>
+            <!-- Legend -->
+            <line x1="490" y1="50" x2="530" y2="50" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="535" y="54" font-size="10" fill="#8b95a3">next</text>
+            <line x1="490" y1="70" x2="530" y2="70" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr)"/>
+            <text x="535" y="74" font-size="10" fill="#a78bfa">prev</text>
+          </svg>
+        </div>
+        <div class="callout info" style="margin-top:12px"><b>Two pointers per node:</b> <code>prev</code> allows O(1) removal of any node (given a reference) and O(1) <code>removeLast()</code> via the tail pointer — impossible with singly linked lists without traversal.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--ds)">addFirst(value)</h3>
+            <ol class="tight">
+              <li>Create new Node</li>
+              <li>If list is empty → head = tail = node</li>
+              <li>Else → node.next = head, head.prev = node, head = node</li>
+              <li>size++</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--ds)">addLast(value)</h3>
+            <ol class="tight">
+              <li>Create new Node</li>
+              <li>If list is empty → head = tail = node</li>
+              <li>Else → tail.next = node, node.prev = tail, tail = node</li>
+              <li>size++</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">removeFirst()</h3>
+            <ol class="tight">
+              <li>Save head.value</li>
+              <li>head = head.next</li>
+              <li>If new head != null → head.prev = null</li>
+              <li>Else → tail = null (list is now empty)</li>
+              <li>size-- and return value</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--conc)">reverse()</h3>
+            <ol class="tight">
+              <li>Walk every node: swap prev ↔ next</li>
+              <li>After loop: swap head ↔ tail</li>
+              <li>That's it — all links reversed in O(n)</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Node — Inner Class</h2><span class="tag">building block</span></div>
+<pre class="code"><span class="kw">private static class</span> <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; {
+    <span class="ty">E</span> value;
+    <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; prev, next;
+    <span class="ty">Node</span>(<span class="ty">E</span> value) { <span class="kw">this</span>.value = value; }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Fields</h2><span class="tag">list state</span></div>
+<pre class="code"><span class="kw">private</span> <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; head, tail;
+<span class="kw">private int</span> size;</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>addFirst &amp; addLast — O(1)</h2><span class="tag">insertion</span></div>
+        <div class="grid g2">
+          <div>
+<pre class="code"><span class="kw">public void</span> addFirst(<span class="ty">E</span> value) {
+    <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; node = <span class="kw">new</span> <span class="ty">Node</span>&lt;&gt;(value);
+    <span class="kw">if</span> (head == <span class="kw">null</span>) {
+        head = tail = node;
+    } <span class="kw">else</span> {
+        node.next = head;
+        head.prev = node;
+        head = node;
+    }
+    size++;
+}</pre>
+          </div>
+          <div>
+<pre class="code"><span class="kw">public void</span> addLast(<span class="ty">E</span> value) {
+    <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; node = <span class="kw">new</span> <span class="ty">Node</span>&lt;&gt;(value);
+    <span class="kw">if</span> (tail == <span class="kw">null</span>) {
+        head = tail = node;
+    } <span class="kw">else</span> {
+        tail.next = node;
+        node.prev = tail;
+        tail = node;
+    }
+    size++;
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>removeFirst &amp; removeLast — O(1)</h2><span class="tag">deletion</span></div>
+        <div class="grid g2">
+          <div>
+<pre class="code"><span class="kw">public</span> <span class="ty">E</span> removeFirst() {
+    <span class="kw">if</span> (head == <span class="kw">null</span>)
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"Empty"</span>);
+    <span class="ty">E</span> value = head.value;
+    head = head.next;
+    <span class="kw">if</span> (head != <span class="kw">null</span>) head.prev = <span class="kw">null</span>;
+    <span class="kw">else</span> tail = <span class="kw">null</span>;
+    size--;
+    <span class="kw">return</span> value;
+}</pre>
+          </div>
+          <div>
+<pre class="code"><span class="kw">public</span> <span class="ty">E</span> removeLast() {
+    <span class="kw">if</span> (tail == <span class="kw">null</span>)
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"Empty"</span>);
+    <span class="ty">E</span> value = tail.value;
+    tail = tail.prev;
+    <span class="kw">if</span> (tail != <span class="kw">null</span>) tail.next = <span class="kw">null</span>;
+    <span class="kw">else</span> head = <span class="kw">null</span>;
+    size--;
+    <span class="kw">return</span> value;
+}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>removeAt(index) — O(n)</h2><span class="tag">arbitrary removal</span></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">E</span> removeAt(<span class="kw">int</span> index) {
+    <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; node = getNode(index);
+    <span class="kw">if</span> (node.prev != <span class="kw">null</span>) node.prev.next = node.next;
+    <span class="kw">else</span> head = node.next;
+    <span class="kw">if</span> (node.next != <span class="kw">null</span>) node.next.prev = node.prev;
+    <span class="kw">else</span> tail = node.prev;
+    size--;
+    <span class="kw">return</span> node.value;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>reverse() — O(n)</h2><span class="tag">swap all pointers</span></div>
+<pre class="code"><span class="kw">public void</span> reverse() {
+    <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; current = head;
+    <span class="kw">while</span> (current != <span class="kw">null</span>) {
+        <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; temp = current.next;
+        current.next = current.prev;   <span class="cm">// swap next ↔ prev</span>
+        current.prev = temp;
+        current = temp;                <span class="cm">// advance (using old next)</span>
+    }
+    <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; temp = head;
+    head = tail;
+    tail = temp;                       <span class="cm">// swap head ↔ tail</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">7</span><h2>getNode(index) — O(n) helper</h2><span class="tag">traversal</span></div>
+<pre class="code"><span class="kw">private</span> <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; getNode(<span class="kw">int</span> index) {
+    <span class="kw">if</span> (index &lt; <span class="num">0</span> || index &gt;= size)
+        <span class="kw">throw new</span> <span class="ty">IndexOutOfBoundsException</span>(<span class="st">"Index: "</span> + index);
+    <span class="ty">Node</span>&lt;<span class="ty">E</span>&gt; current = head;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; index; i++)
+        current = current.next;
+    <span class="kw">return</span> current;
+}</pre>
+        <div class="callout tip" style="margin-top:8px"><b>Optimization:</b> If <code>index &gt; size/2</code>, start from <code>tail</code> and walk backward — cuts traversal time in half on average. Java's <code>LinkedList</code> does this.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">8</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.MyLinkedList</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/MyLinkedList.java</code> (110 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>addFirst()</code></td><td><span class="o1">O(1)</span></td><td>Direct head pointer manipulation</td></tr>
+            <tr><td><code>addLast()</code></td><td><span class="o1">O(1)</span></td><td>Direct tail pointer manipulation</td></tr>
+            <tr><td><code>removeFirst()</code></td><td><span class="o1">O(1)</span></td><td>Advance head, null out prev</td></tr>
+            <tr><td><code>removeLast()</code></td><td><span class="o1">O(1)</span></td><td>Doubly linked — tail.prev is O(1)</td></tr>
+            <tr><td><code>get(index)</code></td><td><span class="on">O(n)</span></td><td>Must traverse from head (or tail)</td></tr>
+            <tr><td><code>removeAt(index)</code></td><td><span class="on">O(n)</span></td><td>Traverse to find node, then O(1) unlink</td></tr>
+            <tr><td><code>reverse()</code></td><td><span class="on">O(n)</span></td><td>Visit every node, swap pointers</td></tr>
+            <tr><td>Space</td><td>O(n)</td><td>n nodes × (value + 2 pointers)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Detect cycle — Floyd's Tortoise &amp; Hare</h3></div>
+            <div class="c-body">
+              <p>Two pointers: slow moves 1 step, fast moves 2 steps. If they meet → cycle exists. To find the cycle start: reset slow to head, advance both 1 step at a time — they meet at the cycle entry. O(n) time, O(1) space. LeetCode #141/#142.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Find middle node</h3></div>
+            <div class="c-body">
+              <p>Slow/fast pointer: when fast reaches the end, slow is at the middle. One pass, O(n) time, O(1) space. Used as a building block for merge sort on linked lists. LeetCode #876.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Merge two sorted linked lists</h3></div>
+            <div class="c-body">
+              <p>Use a dummy head, compare nodes from both lists, attach smaller one. O(n+m) time. The recursive version is elegant but uses O(n+m) stack space. LeetCode #21.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Reverse in groups of k</h3></div>
+            <div class="c-body">
+              <p>Reverse every k nodes in place. Track group boundaries, reverse the sub-list, reconnect. O(n) time, O(1) space. LeetCode #25 (Hard). Common follow-up to basic reverse.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Empty list operations</b> — removeFirst/removeLast on empty list must throw. Always check <code>head == null</code> or <code>tail == null</code> before accessing.</div>
+        <div class="callout"><b>Single node</b> — After removing the only node, both head AND tail must be set to null. Forgetting to null the tail leaves a dangling pointer.</div>
+        <div class="callout tip"><b>Reverse: advance before overwriting</b> — In <code>reverse()</code>, save <code>current.next</code> in a temp variable BEFORE swapping pointers. Otherwise you lose the reference to the next node and the loop breaks.</div>
+        <div class="callout info"><b>prev pointer maintenance</b> — Every insertion and removal must update BOTH <code>next</code> and <code>prev</code> pointers. Missing one direction is the #1 bug in doubly linked list implementations.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/MyLinkedList.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

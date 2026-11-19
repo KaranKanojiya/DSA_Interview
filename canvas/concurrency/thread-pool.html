@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread Pool — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Concurrency</a><span class="sep">›</span> Thread Pool</div>
+
+  <header class="hero">
+    <h1>Thread Pool — Implement from Scratch</h1>
+    <div class="sub">Fixed worker threads pull tasks from a shared <b>BlockingQueue</b>. <code>submit()</code> → queue → worker picks up → executes. Reuses threads instead of creating one per task — amortizes the cost of OS thread creation and context switching.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">Amazon · Google · Microsoft</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">submit()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">Worker loop</span> <span class="val o1">take() blocks when empty</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Thread Pool?</h3>
+            <p>A fixed set of <b>worker threads</b> that continuously pull tasks from a shared queue. Instead of creating a new thread per task (expensive OS operation), you <b>reuse</b> a pre-created set of threads.</p>
+            <p class="muted"><code>submit(task)</code> → task enters queue → idle worker picks it up → executes → loops back for next task.</p>
+          </div>
+          <div class="card">
+            <h3>Why Thread Pools?</h3>
+            <ul class="tight">
+              <li><b>Thread creation is expensive</b> — OS allocates stack memory (~512KB–1MB), kernel scheduling overhead</li>
+              <li><b>Unbounded threads</b> → OOM, context-switch thrashing</li>
+              <li>Pool amortizes cost — threads created once, reused thousands of times</li>
+              <li>Controls concurrency level — prevents resource exhaustion</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Components Diagram</h2></div>
+        <div class="flow">
+          <div class="step conc"><div class="box">submit(task)</div><small>caller adds<br>Runnable to queue</small></div>
+          <div class="step conc"><div class="box">Task Queue</div><small>BlockingQueue<br>thread-safe FIFO</small></div>
+          <div class="step conc"><div class="box">Worker Threads</div><small>N fixed threads<br>loop: take → run</small></div>
+          <div class="step" style="flex:0.6"><div class="box" style="border-color:var(--ok);color:var(--ok)">Execution</div><small>task.run()<br>on worker thread</small></div>
+        </div>
+        <div class="viz" style="margin-top:14px">
+          <svg width="700" height="200">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-hl" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/></marker>
+            </defs>
+            <!-- Caller -->
+            <rect x="10" y="70" width="90" height="50" rx="8" class="node-box"/>
+            <text x="55" y="92" text-anchor="middle" font-size="12" font-weight="600" fill="#e6edf3">Caller</text>
+            <text x="55" y="106" text-anchor="middle" font-size="10" fill="#8b95a3">submit(task)</text>
+            <!-- Arrow -->
+            <line x1="100" y1="95" x2="140" y2="95" stroke="#a78bfa" stroke-width="2" marker-end="url(#arr-hl)"/>
+            <!-- Task Queue -->
+            <rect x="145" y="40" width="140" height="110" rx="8" style="fill:rgba(167,139,250,.08);stroke:var(--conc);stroke-width:1.5"/>
+            <text x="215" y="60" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">BlockingQueue</text>
+            <rect x="160" y="68" width="110" height="22" rx="4" class="node-box"/><text x="215" y="83" text-anchor="middle" font-size="10" fill="#b8c1cc">Task 3</text>
+            <rect x="160" y="94" width="110" height="22" rx="4" class="node-box"/><text x="215" y="109" text-anchor="middle" font-size="10" fill="#b8c1cc">Task 2</text>
+            <rect x="160" y="120" width="110" height="22" rx="4" class="node-hl"/><text x="215" y="135" text-anchor="middle" font-size="10" fill="#2dd4bf">Task 1 (next)</text>
+            <!-- Arrows to workers -->
+            <line x1="285" y1="75" x2="340" y2="48" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr-hl)"/>
+            <line x1="285" y1="95" x2="340" y2="95" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr-hl)"/>
+            <line x1="285" y1="115" x2="340" y2="142" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arr-hl)"/>
+            <!-- Workers -->
+            <rect x="345" y="25" width="110" height="40" rx="8" class="node-hl"/><text x="400" y="42" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">Worker-0</text><text x="400" y="56" text-anchor="middle" font-size="9" fill="#4ade80">running task</text>
+            <rect x="345" y="75" width="110" height="40" rx="8" class="node-hl"/><text x="400" y="92" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">Worker-1</text><text x="400" y="106" text-anchor="middle" font-size="9" fill="#fbbf24">waiting…</text>
+            <rect x="345" y="125" width="110" height="40" rx="8" class="node-hl"/><text x="400" y="142" text-anchor="middle" font-size="11" font-weight="600" fill="#a78bfa">Worker-2</text><text x="400" y="156" text-anchor="middle" font-size="9" fill="#4ade80">running task</text>
+            <!-- Arrows to execution -->
+            <line x1="455" y1="45" x2="510" y2="75" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr)"/>
+            <line x1="455" y1="145" x2="510" y2="115" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr)"/>
+            <!-- Execution -->
+            <rect x="515" y="70" width="130" height="50" rx="8" style="fill:rgba(74,222,128,.08);stroke:var(--ok);stroke-width:1.5"/>
+            <text x="580" y="92" text-anchor="middle" font-size="11" font-weight="600" fill="#4ade80">task.run()</text>
+            <text x="580" y="108" text-anchor="middle" font-size="10" fill="#8b95a3">on worker thread</text>
+            <!-- Loop-back -->
+            <path d="M 400 165 Q 400 190 320 190 Q 290 190 290 150" stroke="#8b95a3" stroke-width="1" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+            <text x="350" y="188" text-anchor="middle" font-size="9" fill="#8b95a3">loop back for next task</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Worker Lifecycle</h2></div>
+        <div class="flow">
+          <div class="step conc"><div class="box">Created</div><small>constructor starts<br>N worker threads</small></div>
+          <div class="step conc"><div class="box">Waiting</div><small>poll(100ms) blocks<br>when queue empty</small></div>
+          <div class="step conc"><div class="box">Running</div><small>task ≠ null →<br>task.run()</small></div>
+          <div class="step conc"><div class="box">Loop</div><small>go back to waiting<br>unless shutdown</small></div>
+          <div class="step" style="flex:0.6"><div class="box" style="border-color:var(--warn);color:var(--warn)">Stopped</div><small>isShutdown &amp;&amp;<br>queue empty</small></div>
+        </div>
+        <div class="callout tip" style="margin-top:12px"><b>poll(100ms) vs take()</b> — Using <code>poll(100, MILLISECONDS)</code> instead of <code>take()</code> allows the worker to periodically check the shutdown flag. Pure <code>take()</code> would block forever if no task arrives after shutdown.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Shutdown Semantics</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--conc)">shutdown()</h3>
+            <ul class="tight">
+              <li>Sets <code>isShutdown</code> flag via <code>AtomicBoolean</code></li>
+              <li>No new tasks accepted — <code>submit()</code> throws <code>IllegalStateException</code></li>
+              <li>Existing tasks in queue <b>still execute</b></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--conc)">awaitTermination()</h3>
+            <ul class="tight">
+              <li>Calls <code>worker.join(5000)</code> on each worker</li>
+              <li>Blocks caller until all workers finish (or timeout)</li>
+              <li>Workers exit when: <code>isShutdown &amp;&amp; queue.isEmpty()</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Worker Inner Class</h2><span class="tag">extends Thread</span></div>
+        <p class="muted">Each Worker is a Thread that loops: poll task from queue → execute → repeat. Daemon threads don't prevent JVM shutdown.</p>
+<pre class="code"><span class="kw">private static class</span> <span class="ty">Worker</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="kw">private final</span> <span class="ty">BlockingQueue</span>&lt;<span class="ty">Runnable</span>&gt; queue;
+    <span class="kw">private final</span> <span class="ty">AtomicBoolean</span> isShutdown;
+
+    <span class="ty">Worker</span>(<span class="kw">int</span> id, <span class="ty">BlockingQueue</span>&lt;<span class="ty">Runnable</span>&gt; queue, <span class="ty">AtomicBoolean</span> isShutdown) {
+        <span class="kw">super</span>(<span class="st">"Worker-"</span> + id);
+        <span class="kw">this</span>.queue = queue;
+        <span class="kw">this</span>.isShutdown = isShutdown;
+        <span class="kw">this</span>.setDaemon(<span class="kw">true</span>);
+    }
+
+    <span class="kw">@Override</span>
+    <span class="kw">public void</span> run() {
+        <span class="cm">// Worker loop: keep running until shutdown AND queue empty</span>
+        <span class="kw">while</span> (!isShutdown.get() || !queue.isEmpty()) {
+            <span class="kw">try</span> {
+                <span class="cm">// poll(100ms) — allows periodic shutdown check</span>
+                <span class="ty">Runnable</span> task = queue.poll(<span class="num">100</span>, <span class="ty">TimeUnit</span>.MILLISECONDS);
+                <span class="kw">if</span> (task != <span class="kw">null</span>) {
+                    task.run();  <span class="cm">// execute on THIS worker thread</span>
+                }
+            } <span class="kw">catch</span> (<span class="ty">InterruptedException</span> e) {
+                <span class="ty">Thread</span>.currentThread().interrupt();
+                <span class="kw">break</span>;
+            } <span class="kw">catch</span> (<span class="ty">Exception</span> e) {
+                <span class="cm">// Worker survives task failure — keeps processing</span>
+            }
+        }
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Fields &amp; Constructor</h2><span class="tag">pool setup</span></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Worker</span>[] workers;
+<span class="kw">private final</span> <span class="ty">BlockingQueue</span>&lt;<span class="ty">Runnable</span>&gt; taskQueue;
+<span class="kw">private final</span> <span class="ty">AtomicBoolean</span> isShutdown;
+
+<span class="kw">public</span> <span class="ty">MyThreadPool</span>(<span class="kw">int</span> poolSize) {
+    <span class="kw">this</span>.taskQueue = <span class="kw">new</span> <span class="ty">LinkedBlockingQueue</span>&lt;&gt;();   <span class="cm">// unbounded task queue</span>
+    <span class="kw">this</span>.isShutdown = <span class="kw">new</span> <span class="ty">AtomicBoolean</span>(<span class="kw">false</span>);
+    <span class="kw">this</span>.workers = <span class="kw">new</span> <span class="ty">Worker</span>[poolSize];
+
+    <span class="cm">// Create and start all worker threads eagerly</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; poolSize; i++) {
+        workers[i] = <span class="kw">new</span> <span class="ty">Worker</span>(i, taskQueue, isShutdown);
+        workers[i].start();
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>submit(task)</h2><span class="tag">O(1)</span></div>
+<pre class="code"><span class="kw">public void</span> submit(<span class="ty">Runnable</span> task) {
+    <span class="kw">if</span> (isShutdown.get()) {
+        <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="st">"ThreadPool is shutdown"</span>);
+    }
+    taskQueue.offer(task);  <span class="cm">// O(1) add to queue — worker will pick it up</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>shutdown() &amp; awaitTermination()</h2><span class="tag">graceful stop</span></div>
+<pre class="code"><span class="kw">public void</span> shutdown() {
+    isShutdown.set(<span class="kw">true</span>);  <span class="cm">// AtomicBoolean — visible to all workers</span>
+    <span class="cm">// Workers finish current tasks + drain queue, then exit</span>
+}
+
+<span class="kw">public void</span> awaitTermination() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="kw">for</span> (<span class="ty">Worker</span> worker : workers) {
+        worker.join(<span class="num">5000</span>);  <span class="cm">// wait up to 5 seconds per worker</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.concurrency.MyThreadPool</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/concurrency/MyThreadPool.java</code> (153 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>submit(task)</code></td><td class="o1">O(1)</td><td>LinkedBlockingQueue.offer() is constant time</td></tr>
+            <tr><td><code>Worker.run()</code></td><td>Blocking</td><td>poll(100ms) blocks when queue empty — worker waits efficiently</td></tr>
+            <tr><td><code>shutdown()</code></td><td class="o1">O(1)</td><td>AtomicBoolean.set(true) — single CAS operation</td></tr>
+            <tr><td><code>awaitTermination()</code></td><td>O(N)</td><td>join() on each of N workers — blocks until all finish</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Dynamic sizing (cached pool)?</h3></div>
+            <div class="c-body">
+              <p>Create threads on demand up to a max, idle threads die after timeout. Java's <code>Executors.newCachedThreadPool()</code> uses a <code>SynchronousQueue</code> — each submit blocks until a worker picks it up or a new thread is created. Track idle time per worker and terminate if exceeds keep-alive.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Rejection policy?</h3></div>
+            <div class="c-body">
+              <p>When both pool and queue are full: <b>AbortPolicy</b> (throw exception), <b>CallerRunsPolicy</b> (caller thread executes task — provides backpressure), <b>DiscardPolicy</b> (silently drop), <b>DiscardOldestPolicy</b> (drop oldest queued task). Java's <code>ThreadPoolExecutor</code> supports all four via <code>RejectedExecutionHandler</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Scheduled thread pool?</h3></div>
+            <div class="c-body">
+              <p>Use a <b>DelayQueue</b> (priority queue ordered by execution time). Each task wraps a delay. Workers call <code>delayQueue.take()</code> which blocks until the earliest task is due. Supports <code>schedule(task, delay)</code> and <code>scheduleAtFixedRate()</code>.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>ForkJoinPool work-stealing?</h3></div>
+            <div class="c-body">
+              <p>Each worker has its own deque. Workers steal from other workers' deques when their own is empty. Optimized for recursive divide-and-conquer tasks. Used by Java's parallel streams. Steals from the <b>tail</b> (LIFO locally, FIFO stealing) to maximize cache locality.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Task throws exception</b> — Worker catches <code>Exception</code> in the run loop and continues. Without this, a single bad task would kill the worker thread, reducing pool capacity permanently.</div>
+        <div class="callout"><b>Shutdown during execution</b> — <code>shutdown()</code> only sets a flag. Workers finish their current task AND drain remaining queued tasks before exiting. This is "graceful" shutdown.</div>
+        <div class="callout"><b>Submit after shutdown</b> — Must throw <code>IllegalStateException</code>. Check <code>isShutdown</code> flag in <code>submit()</code>. Using <code>AtomicBoolean</code> ensures visibility across threads without explicit synchronization.</div>
+        <div class="callout tip"><b>Daemon threads</b> — Workers are set as daemon so they don't prevent JVM exit. Without this, if you forget to call <code>shutdown()</code>, the program hangs forever because non-daemon threads keep the JVM alive.</div>
+        <div class="callout info"><b>poll() vs take()</b> — <code>take()</code> blocks indefinitely. <code>poll(timeout)</code> returns null after timeout, letting the worker check the shutdown flag. This is why the loop condition works: <code>!isShutdown || !queue.isEmpty()</code>.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/concurrency/MyThreadPool.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A-05 · atoi — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Algorithms</a><span class="sep">›</span> atoi</div>
+
+  <header class="hero">
+    <h1>atoi — String to Integer (Implement from Scratch)</h1>
+    <div class="sub">Convert a string to a 32-bit signed integer, handling <b>whitespace, signs, digits, overflow, and invalid characters</b>. The classic 4-step parsing problem: skip whitespace → check +/- sign → parse digits → clamp to INT range. Uses a <code>long</code> intermediate to detect overflow before casting.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">LeetCode #8</span>
+      <span class="badge">Amazon · Microsoft · Meta</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">Time</span> <span class="val o1">O(n)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val o1">O(1)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is atoi?</h3>
+            <p>A function that converts a <b>string representation of a number</b> into its integer value. Named after the C standard library function <code>atoi()</code> ("ASCII to integer").</p>
+            <p class="muted">Input: <code>"  -42abc"</code> → Output: <code>-42</code></p>
+          </div>
+          <div class="card">
+            <h3>Why build from scratch?</h3>
+            <ul class="tight">
+              <li>Tests precise <b>edge-case handling</b> — whitespace, signs, non-digits, overflow</li>
+              <li>Interviewers want to see you handle <b>INT overflow</b> correctly</li>
+              <li><code>Integer.parseInt()</code> exists, but throws exceptions — atoi should return clamped values</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>4-Step Algorithm</h2></div>
+        <div class="flow">
+          <div class="step algo"><div class="box">1. Skip Whitespace</div><small>advance i past<br>leading spaces</small></div>
+          <div class="step algo"><div class="box">2. Check Sign</div><small>read + or −<br>set sign = ±1</small></div>
+          <div class="step algo"><div class="box">3. Parse Digits</div><small>result = result×10<br>+ (ch − '0')</small></div>
+          <div class="step algo"><div class="box">4. Clamp</div><small>overflow → MAX<br>underflow → MIN</small></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Parsing Walkthrough — <code>"  -42abc"</code></h2></div>
+        <div class="viz">
+          <svg viewBox="0 0 820 310" width="820" height="310">
+            <defs>
+              <marker id="atoi-arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+            </defs>
+
+            <!-- Input string characters -->
+            <text x="30" y="22" font-size="11" fill="#8b95a3" font-weight="bold">INPUT STRING CHARACTERS</text>
+            <rect x="30" y="32" width="50" height="40" rx="6" class="node-box"/>
+            <text x="55" y="57" text-anchor="middle" font-size="12" fill="#b8c1cc">' '</text>
+            <rect x="90" y="32" width="50" height="40" rx="6" class="node-box"/>
+            <text x="115" y="57" text-anchor="middle" font-size="12" fill="#b8c1cc">' '</text>
+            <rect x="150" y="32" width="50" height="40" rx="6" fill="rgba(248,113,113,.12)" stroke="#f87171" stroke-width="1.5" rx="6"/>
+            <text x="175" y="57" text-anchor="middle" font-size="12" fill="#f87171" font-weight="600">'-'</text>
+            <rect x="210" y="32" width="50" height="40" rx="6" fill="rgba(56,189,248,.12)" stroke="#38bdf8" stroke-width="1.5" rx="6"/>
+            <text x="235" y="57" text-anchor="middle" font-size="12" fill="#38bdf8" font-weight="600">'4'</text>
+            <rect x="270" y="32" width="50" height="40" rx="6" fill="rgba(56,189,248,.12)" stroke="#38bdf8" stroke-width="1.5" rx="6"/>
+            <text x="295" y="57" text-anchor="middle" font-size="12" fill="#38bdf8" font-weight="600">'2'</text>
+            <rect x="330" y="32" width="50" height="40" rx="6" class="node-box"/>
+            <text x="355" y="57" text-anchor="middle" font-size="12" fill="#b8c1cc">'a'</text>
+            <rect x="390" y="32" width="50" height="40" rx="6" class="node-box"/>
+            <text x="415" y="57" text-anchor="middle" font-size="12" fill="#b8c1cc">'b'</text>
+            <rect x="450" y="32" width="50" height="40" rx="6" class="node-box"/>
+            <text x="475" y="57" text-anchor="middle" font-size="12" fill="#b8c1cc">'c'</text>
+
+            <!-- Index labels -->
+            <text x="55" y="86" text-anchor="middle" font-size="9" fill="#6ea36e">i=0</text>
+            <text x="115" y="86" text-anchor="middle" font-size="9" fill="#6ea36e">i=1</text>
+            <text x="175" y="86" text-anchor="middle" font-size="9" fill="#6ea36e">i=2</text>
+            <text x="235" y="86" text-anchor="middle" font-size="9" fill="#6ea36e">i=3</text>
+            <text x="295" y="86" text-anchor="middle" font-size="9" fill="#6ea36e">i=4</text>
+            <text x="355" y="86" text-anchor="middle" font-size="9" fill="#6ea36e">i=5</text>
+
+            <!-- Step boxes -->
+            <!-- Step 1: Skip whitespace -->
+            <rect x="30" y="110" width="160" height="44" rx="6" fill="rgba(56,189,248,.10)" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="110" y="128" text-anchor="middle" font-size="11" fill="#38bdf8" font-weight="bold">Step 1: Skip Spaces</text>
+            <text x="110" y="144" text-anchor="middle" font-size="10" fill="#b8c1cc">i=0 → i=1 → i=2</text>
+
+            <!-- Arrow -->
+            <line x1="190" y1="132" x2="225" y2="132" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#atoi-arr)"/>
+
+            <!-- Step 2: Check sign -->
+            <rect x="230" y="110" width="160" height="44" rx="6" fill="rgba(248,113,113,.10)" stroke="#f87171" stroke-width="1.5"/>
+            <text x="310" y="128" text-anchor="middle" font-size="11" fill="#f87171" font-weight="bold">Step 2: Read Sign</text>
+            <text x="310" y="144" text-anchor="middle" font-size="10" fill="#b8c1cc">'-' → sign = -1, i=3</text>
+
+            <!-- Arrow -->
+            <line x1="390" y1="132" x2="425" y2="132" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#atoi-arr)"/>
+
+            <!-- Step 3: Parse digits -->
+            <rect x="430" y="110" width="190" height="44" rx="6" fill="rgba(74,222,128,.10)" stroke="#4ade80" stroke-width="1.5"/>
+            <text x="525" y="128" text-anchor="middle" font-size="11" fill="#4ade80" font-weight="bold">Step 3: Parse Digits</text>
+            <text x="525" y="144" text-anchor="middle" font-size="10" fill="#b8c1cc">'4' → 4, '2' → 42, i=5</text>
+
+            <!-- Detail boxes below -->
+            <!-- Digit parsing detail -->
+            <rect x="30" y="180" width="280" height="56" rx="6" class="node-box"/>
+            <text x="170" y="200" text-anchor="middle" font-size="10" fill="#38bdf8" font-weight="bold">DIGIT ACCUMULATION</text>
+            <text x="170" y="216" text-anchor="middle" font-size="10" fill="#b8c1cc">i=3: result = 0×10 + 4 = 4</text>
+            <text x="170" y="228" text-anchor="middle" font-size="10" fill="#b8c1cc">i=4: result = 4×10 + 2 = 42</text>
+
+            <!-- Arrow down to clamp -->
+            <line x1="170" y1="236" x2="170" y2="258" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#atoi-arr)"/>
+
+            <!-- Step 4: Clamp + Result -->
+            <rect x="30" y="262" width="280" height="40" rx="6" fill="rgba(45,212,191,.12)" stroke="#2dd4bf" stroke-width="2"/>
+            <text x="170" y="278" text-anchor="middle" font-size="11" fill="#2dd4bf" font-weight="bold">Step 4: Clamp → result</text>
+            <text x="170" y="293" text-anchor="middle" font-size="10" fill="#b8c1cc">42 × (-1) = -42  (in range → return)</text>
+
+            <!-- Stop reason -->
+            <rect x="430" y="180" width="200" height="44" rx="6" fill="rgba(251,191,36,.10)" stroke="#fbbf24" stroke-width="1.5"/>
+            <text x="530" y="198" text-anchor="middle" font-size="11" fill="#fbbf24" font-weight="bold">STOP: 'a' is not a digit</text>
+            <text x="530" y="214" text-anchor="middle" font-size="10" fill="#b8c1cc">remaining "abc" ignored</text>
+
+            <!-- Final result -->
+            <rect x="640" y="262" width="150" height="40" rx="6" fill="rgba(45,212,191,.18)" stroke="#2dd4bf" stroke-width="2"/>
+            <text x="715" y="287" text-anchor="middle" font-size="14" fill="#2dd4bf" font-weight="bold">→ -42</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Overflow Handling — Why <code>long</code>?</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--warn)">The Overflow Problem</h3>
+            <p>If input is <code>"2147483648"</code> (INT_MAX + 1), an <code>int</code> result would silently wrap around to a negative number. We use <code>long</code> as an intermediate accumulator to detect overflow <b>before</b> casting.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--ok)">Clamp Strategy</h3>
+            <p>After each digit, check:<br>
+            <code>if (result * sign > INT_MAX) return INT_MAX;</code><br>
+            <code>if (result * sign < INT_MIN) return INT_MIN;</code></p>
+            <p class="muted">Check inside the loop, not after — prevents long overflow on enormous strings.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Test Cases Walkthrough</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <div class="kicker">Normal cases</div>
+            <ul class="tight">
+              <li><code>"42"</code> → <b>42</b> — straightforward</li>
+              <li><code>"   -42"</code> → <b>-42</b> — skip spaces, negative sign</li>
+              <li><code>"+1"</code> → <b>1</b> — explicit positive sign</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="kicker">Edge cases</div>
+            <ul class="tight">
+              <li><code>"4193 with words"</code> → <b>4193</b> — stop at non-digit</li>
+              <li><code>"words 123"</code> → <b>0</b> — first non-space is not digit/sign</li>
+              <li><code>"2147483648"</code> → <b>2147483647</b> — clamp to MAX</li>
+              <li><code>""</code> → <b>0</b> — empty string</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Full Implementation</h2><span class="tag">53 lines</span></div>
+        <p class="muted">Single method — no inner classes, no extra data structures. A <code>long</code> accumulator and careful bounds checking are all you need.</p>
+<pre class="code"><span class="kw">public static int</span> myAtoi(<span class="ty">String</span> s) {
+    <span class="kw">if</span> (s == <span class="kw">null</span> || s.isEmpty()) <span class="kw">return</span> <span class="num">0</span>;
+
+    <span class="kw">int</span> i = <span class="num">0</span>, n = s.length();
+
+    <span class="cm">// Step 1: Skip leading whitespace</span>
+    <span class="kw">while</span> (i &lt; n &amp;&amp; s.charAt(i) == <span class="st">' '</span>) i++;
+    <span class="kw">if</span> (i == n) <span class="kw">return</span> <span class="num">0</span>;
+
+    <span class="cm">// Step 2: Check sign</span>
+    <span class="kw">int</span> sign = <span class="num">1</span>;
+    <span class="kw">if</span> (s.charAt(i) == <span class="st">'+'</span> || s.charAt(i) == <span class="st">'-'</span>) {
+        sign = s.charAt(i) == <span class="st">'-'</span> ? -<span class="num">1</span> : <span class="num">1</span>;
+        i++;
+    }
+
+    <span class="cm">// Step 3: Parse digits, handle overflow</span>
+    <span class="kw">long</span> result = <span class="num">0</span>;
+    <span class="kw">while</span> (i &lt; n &amp;&amp; <span class="ty">Character</span>.isDigit(s.charAt(i))) {
+        result = result * <span class="num">10</span> + (s.charAt(i) - <span class="st">'0'</span>);
+
+        <span class="cm">// Step 4: Clamp to INT range</span>
+        <span class="kw">if</span> (result * sign &gt; <span class="ty">Integer</span>.MAX_VALUE) <span class="kw">return</span> <span class="ty">Integer</span>.MAX_VALUE;
+        <span class="kw">if</span> (result * sign &lt; <span class="ty">Integer</span>.MIN_VALUE) <span class="kw">return</span> <span class="ty">Integer</span>.MIN_VALUE;
+        i++;
+    }
+
+    <span class="kw">return</span> (<span class="kw">int</span>) (result * sign);
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Step-by-Step Breakdown</h2><span class="tag">annotated</span></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--algo)">Step 1 — Skip Whitespace</h3>
+<pre class="code"><span class="kw">while</span> (i &lt; n &amp;&amp; s.charAt(i) == <span class="st">' '</span>)
+    i++;
+<span class="kw">if</span> (i == n) <span class="kw">return</span> <span class="num">0</span>;</pre>
+            <p class="muted">Advance index past all leading spaces. If the string is all spaces, return 0.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--warn)">Step 2 — Read Sign</h3>
+<pre class="code"><span class="kw">int</span> sign = <span class="num">1</span>;
+<span class="kw">if</span> (s.charAt(i) == <span class="st">'+'</span> || s.charAt(i) == <span class="st">'-'</span>) {
+    sign = s.charAt(i) == <span class="st">'-'</span> ? -<span class="num">1</span> : <span class="num">1</span>;
+    i++;
+}</pre>
+            <p class="muted">Default positive. Only consume ONE sign character. <code>"+-42"</code> → stop after <code>'+'</code>.</p>
+          </div>
+        </div>
+        <div class="grid g2" style="margin-top:14px">
+          <div class="card">
+            <h3 style="color:var(--ok)">Step 3 — Parse Digits</h3>
+<pre class="code"><span class="kw">long</span> result = <span class="num">0</span>;
+<span class="kw">while</span> (i &lt; n &amp;&amp; <span class="ty">Character</span>.isDigit(s.charAt(i))) {
+    result = result * <span class="num">10</span> + (s.charAt(i) - <span class="st">'0'</span>);
+    <span class="cm">// clamp check inside loop</span>
+    i++;
+}</pre>
+            <p class="muted">Multiply-and-add: <code>result = result * 10 + digit</code>. Stop at first non-digit.</p>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">Step 4 — Clamp to INT Range</h3>
+<pre class="code"><span class="kw">if</span> (result * sign &gt; <span class="ty">Integer</span>.MAX_VALUE)
+    <span class="kw">return</span> <span class="ty">Integer</span>.MAX_VALUE;
+<span class="kw">if</span> (result * sign &lt; <span class="ty">Integer</span>.MIN_VALUE)
+    <span class="kw">return</span> <span class="ty">Integer</span>.MIN_VALUE;</pre>
+            <p class="muted">Check <b>inside</b> the loop after each digit. Using <code>long</code> for result means we can safely detect overflow before it wraps.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Main — Demo Output</h2><span class="tag">runnable</span></div>
+<pre class="code"><span class="kw">public static void</span> main(<span class="ty">String</span>[] args) {
+    <span class="ty">String</span>[] tests = {<span class="st">"42"</span>, <span class="st">"   -42"</span>, <span class="st">"4193 with words"</span>, <span class="st">""</span>,
+                      <span class="st">"words 123"</span>, <span class="st">"+1"</span>, <span class="st">"2147483648"</span>, <span class="st">"-2147483649"</span>};
+    <span class="kw">for</span> (<span class="ty">String</span> t : tests) {
+        System.out.printf(<span class="st">"  myAtoi(\"%s\") = %d%n"</span>, t, myAtoi(t));
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.algorithms.MyAtoi</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/algorithms/MyAtoi.java</code> (53 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Aspect</th><th>Complexity</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Time</td><td class="o1">O(n)</td><td>Single pass over the string — each character visited at most once</td></tr>
+            <tr><td>Space</td><td class="o1">O(1)</td><td>Only a few variables: <code>i</code>, <code>sign</code>, <code>result</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>How does Integer.parseInt() differ?</h3></div>
+            <div class="c-body">
+              <p><code>parseInt()</code> throws <code>NumberFormatException</code> on invalid input. atoi returns 0 or clamped value. parseInt uses a similar digit loop but validates the <b>entire</b> string first — no "stop at first non-digit" behavior.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Handle hex/octal/binary?</h3></div>
+            <div class="c-body">
+              <p>After sign, check prefix: <code>0x</code> → base 16, <code>0b</code> → base 2, <code>0</code> → base 8. In the digit loop, use the base: <code>result = result * base + digitValue</code>. Digit values: for hex, <code>'a'-'f'</code> → 10-15. Java's <code>Integer.parseInt(s, radix)</code> handles this.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>BigInteger for arbitrary precision?</h3></div>
+            <div class="c-body">
+              <p>For strings too large for <code>long</code>, use an array of digits (like BigInteger internals). Multiply-and-add becomes array operations. Java's <code>BigInteger(String)</code> does exactly this. Trade-off: O(n²) for multiply vs O(n) for int atoi.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Locale-aware parsing?</h3></div>
+            <div class="c-body">
+              <p>Different locales use different separators: <code>1,000.50</code> (US) vs <code>1.000,50</code> (DE). Use <code>NumberFormat.getInstance(Locale)</code> for locale-aware parsing. atoi in interviews always assumes ASCII digits and period decimal — no locale handling needed.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Overflow inside the loop</b> — If you check overflow <b>after</b> the loop, the <code>long</code> itself can overflow on astronomically long digit strings. Always clamp inside the while loop, after each digit.</div>
+        <div class="callout"><b>Only one sign allowed</b> — <code>"+-42"</code> should return 0. After reading one sign, the next char must be a digit or we stop. Don't look for a second sign.</div>
+        <div class="callout tip"><b>Empty / all-spaces</b> — Return 0. Don't forget the <code>if (i == n)</code> check after skipping whitespace — prevents IndexOutOfBounds on the sign check.</div>
+        <div class="callout info"><b>Why <code>long</code> and not pure <code>int</code>?</b> — The alternative is to check <code>result > MAX/10</code> or <code>result == MAX/10 && digit > MAX%10</code> before accumulating — correct but harder to read. Using <code>long</code> is cleaner and perfectly valid in interviews.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>vs Java Built-in</h2></div>
+        <table>
+          <thead><tr><th>Feature</th><th>myAtoi()</th><th>Integer.parseInt()</th></tr></thead>
+          <tbody>
+            <tr><td>Invalid input</td><td>Returns 0</td><td>Throws <code>NumberFormatException</code></td></tr>
+            <tr><td>Overflow</td><td>Clamps to INT_MIN / INT_MAX</td><td>Throws exception</td></tr>
+            <tr><td>Leading whitespace</td><td>Skipped</td><td>Not allowed (throws)</td></tr>
+            <tr><td>Trailing non-digits</td><td>Ignored — parses prefix</td><td>Not allowed (throws)</td></tr>
+            <tr><td>Interview value</td><td style="color:var(--ok)">High — shows parsing skills</td><td>Low — one-liner import</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/algorithms/MyAtoi.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

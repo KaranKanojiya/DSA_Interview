@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C-04 · Write-Through / Write-Back Cache — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Caches</a><span class="sep">›</span> Write-Through / Write-Back</div>
+
+  <header class="hero">
+    <h1>Write-Through / Write-Back Cache</h1>
+    <div class="sub">Two write strategies for a cache backed by a persistent store. <b>Write-Through</b>: writes to cache AND store simultaneously (consistent, slower). <b>Write-Back</b>: writes to cache only, flushes to store later (faster, risk of data loss). Interview favorite for system design crossover.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">Amazon · Google</span>
+      <span class="badge">System Design crossover</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">get()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">put()</span> <span class="val o1">O(1) cache</span></span>
+      <span class="cx"><span class="label">flush()</span> <span class="val on">O(dirty)</span></span>
+    </div>
+  </header>
+
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Two Write Strategies</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--ok)">Write-Through</h3>
+            <p>Every write goes to <b>both cache and backing store</b> simultaneously.</p>
+            <ul class="tight">
+              <li style="color:var(--ok)">+ Data always consistent</li>
+              <li style="color:var(--ok)">+ No data loss risk</li>
+              <li style="color:var(--warn)">- Higher write latency (2 writes)</li>
+              <li style="color:var(--warn)">- Store is bottleneck</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">Write-Back (Write-Behind)</h3>
+            <p>Writes go to <b>cache only</b>. Dirty entries flushed to store later.</p>
+            <ul class="tight">
+              <li style="color:var(--ok)">+ Lower write latency</li>
+              <li style="color:var(--ok)">+ Can batch flushes</li>
+              <li style="color:var(--warn)">- Risk of data loss before flush</li>
+              <li style="color:var(--warn)">- More complex (dirty tracking)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Flow Diagrams</h2></div>
+
+        <h3 style="color:var(--ok);margin:16px 0 10px">Write-Through Flow</h3>
+        <div class="flow">
+          <div class="step ds"><div class="box">Client</div><small>put(key, val)</small></div>
+          <div class="step cache"><div class="box">Cache</div><small>store in memory</small></div>
+          <div class="step conc"><div class="box">Backing Store</div><small>write immediately</small></div>
+          <div class="step" style="flex:0.5"><div class="box" style="border-color:var(--ok);color:var(--ok)">ACK</div><small>both written</small></div>
+        </div>
+
+        <h3 style="color:var(--cache);margin:24px 0 10px">Write-Back Flow</h3>
+        <div class="flow">
+          <div class="step ds"><div class="box">Client</div><small>put(key, val)</small></div>
+          <div class="step cache"><div class="box">Cache</div><small>store + mark dirty</small></div>
+          <div class="step" style="flex:0.5"><div class="box" style="border-color:var(--ok);color:var(--ok)">ACK</div><small>fast return</small></div>
+        </div>
+        <div class="flow" style="margin-top:8px">
+          <div class="step cache"><div class="box">Dirty Map</div><small>tracks modified keys</small></div>
+          <div class="step conc"><div class="box">flush()</div><small>batch write to store</small></div>
+          <div class="step" style="flex:0.5"><div class="box" style="border-color:var(--ok);color:var(--ok)">Synced</div><small>dirty cleared</small></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Read Path — Same for Both</h2></div>
+        <div class="card">
+          <h3 style="color:var(--accent)">get(key)</h3>
+          <ol class="tight">
+            <li>Check cache → if <b>HIT</b>, return value (O(1))</li>
+            <li>If <b>MISS</b> → read from backing store</li>
+            <li>Populate cache with fetched value</li>
+            <li>Return value</li>
+          </ol>
+          <p class="muted">Both strategies have the same read path. The cache absorbs reads regardless of write policy.</p>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Comparison Table</h2></div>
+        <table>
+          <thead><tr><th>Aspect</th><th>Write-Through</th><th>Write-Back</th></tr></thead>
+          <tbody>
+            <tr><td>Write latency</td><td class="on">Higher (2 writes)</td><td class="o1">Lower (cache only)</td></tr>
+            <tr><td>Consistency</td><td style="color:var(--ok)">Strong</td><td style="color:var(--warn)">Eventual</td></tr>
+            <tr><td>Data loss risk</td><td style="color:var(--ok)">None</td><td style="color:var(--warn)">On crash before flush</td></tr>
+            <tr><td>Complexity</td><td>Simple</td><td>Dirty tracking + flush</td></tr>
+            <tr><td>Real-world</td><td>CPU L1/L2 cache, DB WAL</td><td>OS page cache, SSD FTL</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields</h2></div>
+<pre class="code"><span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">K</span>, <span class="ty">V</span>&gt; backingStore = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();  <span class="cm">// simulated DB</span>
+<span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">K</span>, <span class="ty">V</span>&gt; cache = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+<span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">K</span>, <span class="ty">Boolean</span>&gt; dirty = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();   <span class="cm">// for write-back</span>
+<span class="kw">private final int</span> capacity;
+<span class="kw">private final boolean</span> writeBack;  <span class="cm">// true = write-back, false = write-through</span></pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>get(key) — read-through</h2></div>
+<pre class="code"><span class="kw">public</span> <span class="ty">V</span> get(<span class="ty">K</span> key) {
+    <span class="cm">// Check cache first</span>
+    <span class="kw">if</span> (cache.containsKey(key)) {
+        <span class="ty">System</span>.out.println(<span class="st">"  [Cache HIT] "</span> + key);
+        <span class="kw">return</span> cache.get(key);
+    }
+    <span class="cm">// Cache miss — read from backing store</span>
+    <span class="ty">V</span> value = backingStore.get(key);
+    <span class="kw">if</span> (value != <span class="kw">null</span>) {
+        <span class="ty">System</span>.out.println(<span class="st">"  [Cache MISS] "</span> + key + <span class="st">" — loaded from store"</span>);
+        cache.put(key, value);
+    }
+    <span class="kw">return</span> value;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>put(key, value) — write-through vs write-back</h2></div>
+<pre class="code"><span class="kw">public void</span> put(<span class="ty">K</span> key, <span class="ty">V</span> value) {
+    <span class="kw">if</span> (writeBack) {
+        <span class="cm">// Write-Back: cache only, mark dirty</span>
+        cache.put(key, value);
+        dirty.put(key, <span class="kw">true</span>);
+    } <span class="kw">else</span> {
+        <span class="cm">// Write-Through: write to BOTH cache and store</span>
+        cache.put(key, value);
+        backingStore.put(key, value);
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>flush() — write-back only</h2></div>
+<pre class="code"><span class="kw">public void</span> flush() {
+    <span class="kw">for</span> (<span class="ty">K</span> key : dirty.keySet()) {
+        backingStore.put(key, cache.get(key));
+    }
+    dirty.clear();
+}</pre>
+        <div class="callout tip">In a real system, <code>flush()</code> would be called periodically by a background thread, on eviction, or on graceful shutdown to prevent data loss.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.cache.WriteThroughCache</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/cache/WriteThroughCache.java</code> (86 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Write-Through</th><th>Write-Back</th></tr></thead>
+          <tbody>
+            <tr><td><code>get(key)</code></td><td class="o1">O(1) cache hit</td><td class="o1">O(1) cache hit</td></tr>
+            <tr><td><code>put(key, val)</code></td><td>O(1) cache + O(store)</td><td class="o1">O(1) cache only</td></tr>
+            <tr><td><code>flush()</code></td><td>N/A</td><td class="on">O(dirty count)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>What about Write-Around?</h3></div>
+            <div class="c-body">
+              <p><b>Write-Around</b>: writes go directly to the store, bypassing the cache. Cache is only populated on read (read-through). Good for write-heavy workloads where data isn't read immediately after writing. Avoids cache pollution.</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>How to prevent data loss in write-back?</h3></div>
+            <div class="c-body">
+              <ul class="tight">
+                <li><b>Write-Ahead Log (WAL)</b> — log dirty writes to disk before acknowledging</li>
+                <li><b>Replication</b> — replicate the cache across nodes</li>
+                <li><b>Periodic flush</b> — flush every N ms or every K dirty entries</li>
+                <li><b>Flush on eviction</b> — when a dirty entry is evicted, flush it first</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Real-world examples?</h3></div>
+            <div class="c-body">
+              <table>
+                <thead><tr><th>System</th><th>Strategy</th></tr></thead>
+                <tbody>
+                  <tr><td>CPU L1/L2 Cache</td><td>Write-through (to L3) or write-back with dirty bit</td></tr>
+                  <tr><td>OS Page Cache</td><td>Write-back (dirty pages flushed by pdflush/kswapd)</td></tr>
+                  <tr><td>SSD FTL</td><td>Write-back (NAND pages, garbage collection)</td></tr>
+                  <tr><td>Redis + MySQL</td><td>Write-through (app writes both) or write-behind (async)</td></tr>
+                  <tr><td>CDN</td><td>Write-around (origin push) or read-through (on miss)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Cache Invalidation?</h3></div>
+            <div class="c-body">
+              <p><i>"There are only two hard things in CS: cache invalidation and naming things."</i></p>
+              <p>Strategies: <b>TTL-based</b> (combine with TTLCache), <b>event-driven</b> (pub/sub on DB changes), <b>versioning</b> (ETag/Last-Modified). Write-through avoids the worst invalidation problems since cache and store are always in sync.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Crash before flush</b> — Write-back's biggest risk. If the process crashes, all dirty entries are lost. This is why databases use a WAL even with a buffer pool (which is essentially a write-back cache).</div>
+        <div class="callout"><b>Eviction of dirty entries</b> — If using write-back with an LRU eviction policy, you MUST flush a dirty entry before evicting it. Otherwise you silently lose the write.</div>
+        <div class="callout tip"><b>Batch flushes</b> — Write-back can batch multiple writes into a single store operation (e.g., bulk INSERT). This amortizes the store write cost and is why write-back throughput can be much higher.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>All 4 Cache Patterns Together</h2></div>
+        <table>
+          <thead><tr><th>Cache Type</th><th>Eviction</th><th>Key Feature</th><th>File</th></tr></thead>
+          <tbody>
+            <tr><td><a href="lru-cache.html">LRU</a></td><td>Least recently used</td><td>HashMap + DLL</td><td><code>LRUCache.java</code></td></tr>
+            <tr><td><a href="lfu-cache.html">LFU</a></td><td>Least frequently used</td><td>3 HashMaps + minFreq</td><td><code>LFUCache.java</code></td></tr>
+            <tr><td><a href="ttl-cache.html">TTL</a></td><td>Time-based expiry</td><td>Lazy + active cleanup</td><td><code>TTLCache.java</code></td></tr>
+            <tr><td>Write-Through/Back</td><td>N/A (policy layer)</td><td>Dirty tracking + flush</td><td><code>WriteThroughCache.java</code></td></tr>
+          </tbody>
+        </table>
+        <div class="callout info">In production, you often <b>combine</b> these: an LRU cache with TTL expiry and write-back to a database. Redis does exactly this.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/cache/WriteThroughCache.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

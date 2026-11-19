@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS-07 · Trie — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Data Structures</a><span class="sep">›</span> Trie</div>
+
+  <header class="hero">
+    <h1>Trie (Prefix Tree) — Implement from Scratch</h1>
+    <div class="sub">Each node represents a character. Paths from root spell prefixes. Uses <code>children[26]</code> for a-z. <b>insert</b>, <b>search</b>, and <b>startsWith</b> all run in O(m) where m = word length. The go-to data structure for autocomplete, spell checking, and prefix-based retrieval. LeetCode #208.</div>
+    <div class="badges">
+      <span class="badge diff-med">Medium</span>
+      <span class="badge">LeetCode #208</span>
+      <span class="badge">Google · Amazon · Meta · Microsoft</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">insert()</span> <span class="val o1">O(m)</span></span>
+      <span class="cx"><span class="label">search()</span> <span class="val o1">O(m)</span></span>
+      <span class="cx"><span class="label">startsWith()</span> <span class="val o1">O(m)</span></span>
+      <span class="cx"><span class="label">Space</span> <span class="val on">O(ALPHABET × m × n)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a Trie?</h3>
+            <p>A tree where each edge represents a <b>character</b> and each path from root to a node spells a <b>prefix</b>. Nodes marked as <code>isEndOfWord</code> indicate complete words. Shared prefixes share the same path — massive space saving for dictionaries.</p>
+            <p class="muted">Named after re<b>trie</b>val — pronounced "try" to distinguish from "tree".</p>
+          </div>
+          <div class="card">
+            <h3>Why Trie over HashSet?</h3>
+            <ul class="tight">
+              <li><b>Prefix search</b> — HashSet can't do "find all words starting with 'app'" efficiently</li>
+              <li><b>Autocomplete</b> — traverse to prefix node, then DFS to collect all completions</li>
+              <li><b>Sorted iteration</b> — DFS on a trie yields words in lexicographic order</li>
+              <li><b>Pattern matching</b> — wild cards, word search boards</li>
+            </ul>
+            <p class="muted">HashSet wins on simple contains() — O(1) avg vs O(m) for trie. Use trie when you need prefix operations.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Trie Structure — "cat", "car", "card"</h2></div>
+        <div class="viz">
+          <svg width="460" height="280" viewBox="0 0 460 280">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker></defs>
+
+            <!-- Root -->
+            <rect x="195" y="10" width="50" height="32" rx="6" class="node-box"/>
+            <text x="220" y="31" text-anchor="middle" font-size="12" fill="#8b95a3">root</text>
+
+            <!-- Edge: root → c -->
+            <line x1="220" y1="42" x2="220" y2="62" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="230" y="56" font-size="10" fill="#2dd4bf">c</text>
+
+            <!-- Node: c -->
+            <rect x="195" y="66" width="50" height="32" rx="6" class="node-hl"/>
+            <text x="220" y="87" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">c</text>
+
+            <!-- Edge: c → a -->
+            <line x1="220" y1="98" x2="220" y2="118" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="230" y="112" font-size="10" fill="#2dd4bf">a</text>
+
+            <!-- Node: a -->
+            <rect x="195" y="122" width="50" height="32" rx="6" class="node-hl"/>
+            <text x="220" y="143" text-anchor="middle" font-size="13" font-weight="600" fill="#2dd4bf">a</text>
+
+            <!-- Branch: a → t (left) and a → r (right) -->
+            <!-- Edge: a → t -->
+            <line x1="205" y1="154" x2="130" y2="178" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="160" y="170" font-size="10" fill="#fbbf24">t</text>
+
+            <!-- Node: t (end of "cat") -->
+            <rect x="100" y="182" width="50" height="32" rx="6" style="fill:rgba(74,222,128,.15);stroke:var(--ok);stroke-width:2"/>
+            <text x="125" y="200" text-anchor="middle" font-size="13" font-weight="600" fill="#4ade80">t</text>
+            <text x="125" y="230" text-anchor="middle" font-size="10" fill="#4ade80">end: "cat"</text>
+
+            <!-- Edge: a → r -->
+            <line x1="235" y1="154" x2="310" y2="178" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="280" y="170" font-size="10" fill="#fbbf24">r</text>
+
+            <!-- Node: r (end of "car") -->
+            <rect x="285" y="182" width="50" height="32" rx="6" style="fill:rgba(74,222,128,.15);stroke:var(--ok);stroke-width:2"/>
+            <text x="310" y="200" text-anchor="middle" font-size="13" font-weight="600" fill="#4ade80">r</text>
+            <text x="310" y="230" text-anchor="middle" font-size="10" fill="#4ade80">end: "car"</text>
+
+            <!-- Edge: r → d -->
+            <line x1="335" y1="214" x2="380" y2="228" stroke="#8b95a3" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="365" y="222" font-size="10" fill="#fbbf24">d</text>
+
+            <!-- Node: d (end of "card") -->
+            <rect x="370" y="232" width="50" height="32" rx="6" style="fill:rgba(74,222,128,.15);stroke:var(--ok);stroke-width:2"/>
+            <text x="395" y="250" text-anchor="middle" font-size="13" font-weight="600" fill="#4ade80">d</text>
+            <text x="395" y="275" text-anchor="middle" font-size="10" fill="#4ade80">end: "card"</text>
+
+            <!-- Legend -->
+            <rect x="10" y="10" width="12" height="12" rx="3" style="fill:rgba(74,222,128,.15);stroke:var(--ok);stroke-width:1"/>
+            <text x="28" y="20" font-size="10" fill="#8b95a3">= isEndOfWord</text>
+          </svg>
+        </div>
+        <div class="callout tip"><b>Shared prefix "ca"</b> — "cat", "car", "card" all share the path root→c→a. Only the branch point differs. This is why tries are space-efficient for words with common prefixes.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Array vs HashMap Children</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Array: <code>children[26]</code></h3>
+            <ul class="tight">
+              <li>O(1) child lookup: <code>children[ch - 'a']</code></li>
+              <li>Fixed 26 slots per node (a-z only)</li>
+              <li>Wastes space if most slots are null</li>
+              <li>Best for interview: simple, fast, predictable</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>HashMap: <code>Map&lt;Character, Node&gt;</code></h3>
+            <ul class="tight">
+              <li>O(1) amortized child lookup</li>
+              <li>Only allocates for existing children</li>
+              <li>Supports any character set (Unicode, etc.)</li>
+              <li>More overhead per entry (HashMap node objects)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Operations — Step by Step</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 style="color:var(--accent)">insert(word)</h3>
+            <ol class="tight">
+              <li>Start at root</li>
+              <li>For each char: compute index = <code>ch - 'a'</code></li>
+              <li>If <code>children[index]</code> is null → create new node</li>
+              <li>Move to <code>children[index]</code></li>
+              <li>After last char: mark <code>isEndOfWord = true</code></li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3 style="color:var(--cache)">search(word) / startsWith(prefix)</h3>
+            <ol class="tight">
+              <li>Start at root</li>
+              <li>For each char: compute index = <code>ch - 'a'</code></li>
+              <li>If <code>children[index]</code> is null → return false</li>
+              <li>Move to <code>children[index]</code></li>
+              <li><b>search:</b> return <code>node.isEndOfWord</code></li>
+              <li><b>startsWith:</b> return <code>true</code> (node exists = prefix exists)</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>TrieNode — Inner Class</h2><span class="tag">node structure</span></div>
+<pre class="code"><span class="kw">private static class</span> <span class="ty">TrieNode</span> {
+    <span class="ty">TrieNode</span>[] children = <span class="kw">new</span> <span class="ty">TrieNode</span>[<span class="num">26</span>];  <span class="cm">// a-z</span>
+    <span class="kw">boolean</span> isEndOfWord = <span class="kw">false</span>;
+}
+
+<span class="kw">private final</span> <span class="ty">TrieNode</span> root = <span class="kw">new</span> <span class="ty">TrieNode</span>();</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>insert(word)</h2><span class="tag">O(m)</span></div>
+<pre class="code"><span class="kw">public void</span> insert(<span class="ty">String</span> word) {
+    <span class="ty">TrieNode</span> curr = root;
+    <span class="kw">for</span> (<span class="kw">char</span> ch : word.toCharArray()) {
+        <span class="kw">int</span> idx = ch - <span class="st">'a'</span>;
+        <span class="kw">if</span> (curr.children[idx] == <span class="kw">null</span>) {
+            curr.children[idx] = <span class="kw">new</span> <span class="ty">TrieNode</span>();  <span class="cm">// create path</span>
+        }
+        curr = curr.children[idx];  <span class="cm">// traverse down</span>
+    }
+    curr.isEndOfWord = <span class="kw">true</span>;  <span class="cm">// mark as complete word</span>
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>search(word) &amp; startsWith(prefix)</h2><span class="tag">O(m)</span></div>
+<pre class="code"><span class="kw">public boolean</span> search(<span class="ty">String</span> word) {
+    <span class="ty">TrieNode</span> node = findNode(word);
+    <span class="kw">return</span> node != <span class="kw">null</span> &amp;&amp; node.isEndOfWord;
+}
+
+<span class="kw">public boolean</span> startsWith(<span class="ty">String</span> prefix) {
+    <span class="kw">return</span> findNode(prefix) != <span class="kw">null</span>;
+}
+
+<span class="cm">// Shared helper — traverses the trie following each character</span>
+<span class="kw">private</span> <span class="ty">TrieNode</span> findNode(<span class="ty">String</span> s) {
+    <span class="ty">TrieNode</span> curr = root;
+    <span class="kw">for</span> (<span class="kw">char</span> ch : s.toCharArray()) {
+        <span class="kw">int</span> idx = ch - <span class="st">'a'</span>;
+        <span class="kw">if</span> (curr.children[idx] == <span class="kw">null</span>) <span class="kw">return null</span>;
+        curr = curr.children[idx];
+    }
+    <span class="kw">return</span> curr;
+}</pre>
+        <div class="callout info"><b>findNode</b> is the shared traversal logic. <code>search</code> checks <code>isEndOfWord</code> on the result; <code>startsWith</code> just checks that the node exists.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>delete(word) — Recursive</h2><span class="tag">O(m)</span></div>
+<pre class="code"><span class="kw">public boolean</span> delete(<span class="ty">String</span> word) {
+    <span class="kw">return</span> deleteHelper(root, word, <span class="num">0</span>);
+}
+
+<span class="kw">private boolean</span> deleteHelper(<span class="ty">TrieNode</span> node, <span class="ty">String</span> word, <span class="kw">int</span> depth) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return false</span>;
+
+    <span class="kw">if</span> (depth == word.length()) {
+        <span class="kw">if</span> (!node.isEndOfWord) <span class="kw">return false</span>;  <span class="cm">// word doesn't exist</span>
+        node.isEndOfWord = <span class="kw">false</span>;
+        <span class="kw">return</span> isEmpty(node);  <span class="cm">// can delete node if no children</span>
+    }
+
+    <span class="kw">int</span> idx = word.charAt(depth) - <span class="st">'a'</span>;
+    <span class="kw">boolean</span> shouldDelete = deleteHelper(node.children[idx], word, depth + <span class="num">1</span>);
+
+    <span class="kw">if</span> (shouldDelete) {
+        node.children[idx] = <span class="kw">null</span>;  <span class="cm">// remove the child link</span>
+        <span class="kw">return</span> !node.isEndOfWord &amp;&amp; isEmpty(node);
+    }
+    <span class="kw">return false</span>;
+}
+
+<span class="kw">private boolean</span> isEmpty(<span class="ty">TrieNode</span> node) {
+    <span class="kw">for</span> (<span class="ty">TrieNode</span> child : node.children) {
+        <span class="kw">if</span> (child != <span class="kw">null</span>) <span class="kw">return false</span>;
+    }
+    <span class="kw">return true</span>;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.data_structures.Trie</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/data_structures/Trie.java</code></p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>insert(word)</code></td><td><span style="color:var(--ok);font-weight:600">O(m)</span></td><td>Traverse/create m nodes (one per character)</td></tr>
+            <tr><td><code>search(word)</code></td><td><span style="color:var(--ok);font-weight:600">O(m)</span></td><td>Traverse m nodes, check isEndOfWord</td></tr>
+            <tr><td><code>startsWith(prefix)</code></td><td><span style="color:var(--ok);font-weight:600">O(m)</span></td><td>Traverse m nodes, existence check only</td></tr>
+            <tr><td><code>delete(word)</code></td><td><span style="color:var(--ok);font-weight:600">O(m)</span></td><td>Traverse m levels of recursion</td></tr>
+            <tr><td>Space</td><td><span style="color:var(--warn);font-weight:600">O(26 × m × n)</span></td><td>Worst case: n words of length m, no shared prefixes</td></tr>
+          </tbody>
+        </table>
+        <p class="muted">m = word length, n = number of words, 26 = alphabet size (array children)</p>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Autocomplete / Top-K prefix (LC #642)?</h3></div>
+            <div class="c-body">
+              <p>Navigate to the prefix node, then DFS to collect all words below it. For <b>top-K</b>: store a frequency count in each end-of-word node. Use a min-heap of size K during DFS to track the top-K results. Alternatively, pre-compute top-K at each node for O(m) query time (space trade-off).</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>Word Search II (LC #212)?</h3></div>
+            <div class="c-body">
+              <p>Build a trie from the word list. Run DFS from each cell on the board, following trie edges. If you reach an <code>isEndOfWord</code> node, you found a word. Prune branches with no matching trie path. Much faster than searching each word individually. O(M × N × 4^L) worst case but trie pruning makes it practical.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Replace Words (LC #648)?</h3></div>
+            <div class="c-body">
+              <p>Insert all root words into a trie. For each word in the sentence, traverse the trie character by character. If you hit an <code>isEndOfWord</code> node, replace the word with the root (shortest prefix match). If you exhaust the trie path, keep the original word. O(n × m) where n = words, m = avg word length.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Map Sum Pairs (LC #677)?</h3></div>
+            <div class="c-body">
+              <p>Each trie node stores a <code>sum</code> value. On insert, update the sum at every node along the path. For <code>sum(prefix)</code>, navigate to the prefix node and return its sum. Handle updates by storing old values and adjusting the delta. O(m) for both operations.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Empty string</b> — Inserting "" marks the root's <code>isEndOfWord = true</code>. <code>search("")</code> should return true, <code>startsWith("")</code> is trivially true. Make sure your loop handles zero iterations correctly.</div>
+        <div class="callout"><b>Prefix exists but isn't a word</b> — "car" is in the trie but "ca" is not a word. <code>search("ca")</code> must return false (isEndOfWord is false), while <code>startsWith("ca")</code> returns true. This distinction is the #1 trie interview trap.</div>
+        <div class="callout tip"><b>Delete non-existent word</b> — Deleting a word that doesn't exist must not corrupt other words. Check <code>isEndOfWord</code> at the target depth before removing any nodes. Only prune nodes that have no other children and aren't end-of-word for other paths.</div>
+        <div class="callout info"><b>Case sensitivity</b> — If the input may include uppercase letters, normalize to lowercase first or use <code>children[52]</code> (a-z + A-Z). Interview tip: always clarify the character set with the interviewer.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/data_structures/Trie.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>

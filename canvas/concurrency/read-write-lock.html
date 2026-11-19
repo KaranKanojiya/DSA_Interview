@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReadWrite Lock — DSA Interview</title>
+<link rel="stylesheet" href="../assets/canvas.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="breadcrumb"><a href="../index.html">Hub</a><span class="sep">›</span><a href="../index.html">Concurrency</a><span class="sep">›</span> ReadWrite Lock</div>
+
+  <header class="hero">
+    <h1>ReadWrite Lock — Implement from Scratch</h1>
+    <div class="sub">Multiple concurrent readers allowed. <b>Exclusive writer access.</b> Writer starvation prevention via <code>writersWaiting</code> counter. Uses <code>synchronized</code> + <code>wait()/notifyAll()</code>.</div>
+    <div class="badges">
+      <span class="badge diff-hard">Hard</span>
+      <span class="badge">Google · Amazon · Microsoft</span>
+    </div>
+    <div class="cx-row">
+      <span class="cx"><span class="label">readLock()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">readUnlock()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">writeLock()</span> <span class="val o1">O(1)</span></span>
+      <span class="cx"><span class="label">writeUnlock()</span> <span class="val o1">O(1)</span></span>
+    </div>
+  </header>
+
+  <!-- ======== TABS ======== -->
+  <div data-tabscope>
+    <div class="tabs">
+      <div class="tab active" data-tab="concept">Concept</div>
+      <div class="tab" data-tab="impl">Implementation</div>
+      <div class="tab" data-tab="interview">Interview</div>
+    </div>
+
+    <!-- ============ TAB 1: CONCEPT ============ -->
+    <div class="tabpanel active" data-panel="concept">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Core Idea</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3>What is a ReadWrite Lock?</h3>
+            <p>A lock that distinguishes between <b>read</b> and <b>write</b> access. Reads don't modify shared state, so multiple readers can proceed concurrently. Writes need exclusive access.</p>
+            <p class="muted">Optimizes for read-heavy workloads — databases, caches, config stores.</p>
+          </div>
+          <div class="card">
+            <h3>When to use RWLock vs Mutex?</h3>
+            <ul class="tight">
+              <li><b>RWLock</b> — read-heavy workloads (90%+ reads). Multiple readers run in parallel.</li>
+              <li><b>Mutex</b> — write-heavy workloads or balanced. Simpler, less overhead per acquisition.</li>
+              <li>RWLock has higher overhead per operation — only pays off when reads vastly outnumber writes.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Read-Write Concurrency Matrix</h2></div>
+        <table>
+          <thead><tr><th></th><th style="color:var(--ok)">Reader holds lock</th><th style="color:var(--warn)">Writer holds lock</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;color:var(--ok)">Reader wants lock</td><td style="color:var(--ok)">✓ Allowed — concurrent reads</td><td style="color:var(--warn)">✗ Blocked — wait for writer</td></tr>
+            <tr><td style="font-weight:600;color:var(--warn)">Writer wants lock</td><td style="color:var(--warn)">✗ Blocked — wait for all readers</td><td style="color:var(--warn)">✗ Blocked — wait for writer</td></tr>
+          </tbody>
+        </table>
+        <div class="callout info"><b>R+R = OK, R+W = Block, W+W = Block.</b> This is the fundamental invariant of every read-write lock.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Architecture Diagram</h2></div>
+        <div class="viz">
+          <svg width="740" height="280" viewBox="0 0 740 280">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b95a3"/></marker>
+              <marker id="arr-ok" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+              <marker id="arr-warn" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#f87171"/></marker>
+            </defs>
+            <!-- Shared Resource (top) -->
+            <rect x="270" y="10" width="200" height="45" rx="8" style="fill:rgba(167,139,250,.12);stroke:#a78bfa;stroke-width:2"/>
+            <text x="370" y="30" text-anchor="middle" font-size="12" font-weight="600" fill="#a78bfa">Shared Resource</text>
+            <text x="370" y="46" text-anchor="middle" font-size="10" fill="#b8c1cc">sharedData[0]</text>
+            <!-- Lock State (middle) -->
+            <rect x="210" y="80" width="320" height="55" rx="8" class="node-box"/>
+            <text x="370" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="#a78bfa">Lock State</text>
+            <text x="270" y="120" text-anchor="middle" font-size="10" fill="#4ade80">readers: int</text>
+            <text x="370" y="120" text-anchor="middle" font-size="10" fill="#f87171">writerActive: bool</text>
+            <text x="480" y="120" text-anchor="middle" font-size="10" fill="#fbbf24">writersWaiting: int</text>
+            <!-- Readers (left) -->
+            <rect x="20" y="72" width="100" height="30" rx="6" style="fill:rgba(74,222,128,.1);stroke:#4ade80;stroke-width:1.5"/>
+            <text x="70" y="91" text-anchor="middle" font-size="11" fill="#4ade80">Reader 1</text>
+            <rect x="20" y="112" width="100" height="30" rx="6" style="fill:rgba(74,222,128,.1);stroke:#4ade80;stroke-width:1.5"/>
+            <text x="70" y="131" text-anchor="middle" font-size="11" fill="#4ade80">Reader 2</text>
+            <rect x="20" y="152" width="100" height="30" rx="6" style="fill:rgba(74,222,128,.1);stroke:#4ade80;stroke-width:1.5"/>
+            <text x="70" y="171" text-anchor="middle" font-size="11" fill="#4ade80">Reader 3</text>
+            <!-- Reader arrows (staggered into lock box) -->
+            <line x1="120" y1="87" x2="208" y2="95" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-ok)"/>
+            <line x1="120" y1="127" x2="208" y2="107" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-ok)"/>
+            <line x1="120" y1="167" x2="208" y2="119" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arr-ok)"/>
+            <text x="170" y="72" text-anchor="middle" font-size="10" fill="#4ade80">concurrent</text>
+            <!-- Writer (right) -->
+            <rect x="620" y="82" width="100" height="45" rx="6" style="fill:rgba(248,113,113,.1);stroke:#f87171;stroke-width:1.5"/>
+            <text x="670" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="#f87171">Writer</text>
+            <text x="670" y="118" text-anchor="middle" font-size="10" fill="#8b95a3">exclusive</text>
+            <!-- Writer arrow -->
+            <line x1="618" y1="105" x2="532" y2="105" stroke="#f87171" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arr-warn)"/>
+            <text x="575" y="98" text-anchor="middle" font-size="9" fill="#f87171">blocks if</text>
+            <text x="575" y="112" text-anchor="middle" font-size="9" fill="#f87171">readers &gt; 0</text>
+            <!-- Starvation Fix (bottom, well spaced) -->
+            <rect x="170" y="165" width="400" height="70" rx="8" style="fill:rgba(251,191,36,.06);stroke:#fbbf24;stroke-width:1.5"/>
+            <text x="370" y="188" text-anchor="middle" font-size="12" font-weight="600" fill="#fbbf24">Writer Starvation Fix</text>
+            <text x="370" y="208" text-anchor="middle" font-size="11" fill="#b8c1cc">readLock() checks: writersWaiting &gt; 0?</text>
+            <text x="370" y="226" text-anchor="middle" font-size="11" fill="#b8c1cc">If yes → new readers WAIT, letting writer go first</text>
+            <!-- Connection from lock to starvation box -->
+            <line x1="370" y1="135" x2="370" y2="163" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3 2"/>
+            <!-- Legend -->
+            <text x="370" y="260" text-anchor="middle" font-size="10" fill="#8b95a3">synchronized + wait() / notifyAll()</text>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>Writer Starvation Problem &amp; Fix</h2></div>
+        <div class="grid g2">
+          <div class="card" style="border-color:var(--warn)">
+            <h3 style="color:var(--warn)">Problem (without fix)</h3>
+            <p>If readers keep arriving, the reader count never drops to 0. The writer waits forever — <b>starvation</b>.</p>
+            <p class="muted">Scenario: Reader 1 holds lock → Reader 2 arrives (allowed) → Writer waits → Reader 3 arrives (allowed) → Reader 1 leaves → Reader 4 arrives … writer never gets in.</p>
+          </div>
+          <div class="card" style="border-color:var(--ok)">
+            <h3 style="color:var(--ok)">Fix: writersWaiting counter</h3>
+            <p>When a writer is waiting, <b>new readers also wait</b>. Existing readers finish, then the writer gets in.</p>
+            <p class="muted"><code>readLock()</code> checks: <code>while (writerActive || writersWaiting > 0) wait()</code>. New readers yield to waiting writers.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ TAB 2: IMPLEMENTATION ============ -->
+    <div class="tabpanel" data-panel="impl">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Fields</h2><span class="tag">lock state</span></div>
+<pre class="code"><span class="kw">private int</span> readers = <span class="num">0</span>;             <span class="cm">// count of active readers</span>
+<span class="kw">private boolean</span> writerActive = <span class="kw">false</span>; <span class="cm">// is a writer currently holding the lock?</span>
+<span class="kw">private int</span> writersWaiting = <span class="num">0</span>;       <span class="cm">// writers waiting in line (starvation prevention)</span></pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>readLock()</h2><span class="tag">shared acquisition</span></div>
+        <p class="muted">Wait while a writer is active OR writers are waiting (starvation prevention). Then increment reader count.</p>
+<pre class="code"><span class="kw">public synchronized void</span> readLock() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    <span class="cm">// Block if writer is active OR if writers are waiting (prevent starvation)</span>
+    <span class="kw">while</span> (writerActive || writersWaiting &gt; <span class="num">0</span>) {
+        wait();
+    }
+    readers++;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>readUnlock()</h2><span class="tag">shared release</span></div>
+        <p class="muted">Decrement reader count. If this was the last reader, notify all — a waiting writer can now proceed.</p>
+<pre class="code"><span class="kw">public synchronized void</span> readUnlock() {
+    readers--;
+    <span class="kw">if</span> (readers == <span class="num">0</span>) {
+        notifyAll();  <span class="cm">// wake waiting writer (if any)</span>
+    }
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">4</span><h2>writeLock()</h2><span class="tag">exclusive acquisition</span></div>
+        <p class="muted">Increment writersWaiting (blocks new readers), wait until no readers and no active writer, then acquire.</p>
+<pre class="code"><span class="kw">public synchronized void</span> writeLock() <span class="kw">throws</span> <span class="ty">InterruptedException</span> {
+    writersWaiting++;  <span class="cm">// signal to readLock: "a writer is waiting, don't enter"</span>
+    <span class="kw">while</span> (readers &gt; <span class="num">0</span> || writerActive) {
+        wait();  <span class="cm">// wait until all readers finish AND no other writer active</span>
+    }
+    writersWaiting--;
+    writerActive = <span class="kw">true</span>;
+}</pre>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">5</span><h2>writeUnlock()</h2><span class="tag">exclusive release</span></div>
+        <p class="muted">Clear writer flag and wake all waiting threads — both readers and writers compete for the lock.</p>
+<pre class="code"><span class="kw">public synchronized void</span> writeUnlock() {
+    writerActive = <span class="kw">false</span>;
+    notifyAll();  <span class="cm">// wake ALL waiting threads (readers + writers)</span>
+}</pre>
+        <div class="callout info"><b>Why notifyAll() (not notify())?</b> After a writer releases, multiple readers can proceed simultaneously. <code>notify()</code> would wake only one thread — potentially a single reader when many readers could run concurrently.</div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">6</span><h2>Run It</h2><span class="tag">demo</span></div>
+<pre class="code">mvn compile &amp;&amp; java --enable-preview -cp target/classes dsa.concurrency.MyReadWriteLock</pre>
+        <p class="muted">Source: <code>src/main/java/dsa/concurrency/MyReadWriteLock.java</code> (73 lines)</p>
+      </section>
+    </div>
+
+    <!-- ============ TAB 3: INTERVIEW ============ -->
+    <div class="tabpanel" data-panel="interview">
+
+      <section>
+        <div class="sec-h"><span class="n">1</span><h2>Complexity Summary</h2></div>
+        <table>
+          <thead><tr><th>Operation</th><th>Time</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>readLock()</code></td><td class="o1">O(1)</td><td>Check flags + increment counter (excluding wait time)</td></tr>
+            <tr><td><code>readUnlock()</code></td><td class="o1">O(1)</td><td>Decrement counter + conditional notifyAll</td></tr>
+            <tr><td><code>writeLock()</code></td><td class="o1">O(1)</td><td>Increment/decrement counter + set flag (excluding wait time)</td></tr>
+            <tr><td><code>writeUnlock()</code></td><td class="o1">O(1)</td><td>Clear flag + notifyAll</td></tr>
+            <tr><td>Space</td><td class="o1">O(1)</td><td>Three integer/boolean fields — no per-thread data</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">2</span><h2>Common Follow-ups</h2></div>
+        <div class="grid g2">
+          <div class="card collapsible open">
+            <div class="c-head"><h3>ReentrantReadWriteLock?</h3></div>
+            <div class="c-body">
+              <p>Java's built-in version uses a single <code>int</code> state: upper 16 bits = read count, lower 16 bits = write count. Supports reentrancy (same thread can acquire multiple times), optional fairness, and lock downgrading (write → read without releasing).</p>
+            </div>
+          </div>
+          <div class="card collapsible open">
+            <div class="c-head"><h3>StampedLock optimistic read?</h3></div>
+            <div class="c-body">
+              <p><code>StampedLock.tryOptimisticRead()</code> returns a "stamp" without acquiring any lock. After reading shared data, call <code>validate(stamp)</code> — if no writer intervened, the read is valid. Falls back to a full read lock if validation fails. Much faster for read-heavy scenarios.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Downgrade write → read?</h3></div>
+            <div class="c-body">
+              <p>While holding write lock: acquire read lock, then release write lock. This allows the thread to keep read access while letting other readers in. <code>ReentrantReadWriteLock</code> supports this. The reverse (read → write upgrade) is <b>NOT safe</b> — can cause deadlock if two readers both try to upgrade.</p>
+            </div>
+          </div>
+          <div class="card collapsible">
+            <div class="c-head"><h3>Fairness considerations?</h3></div>
+            <div class="c-body">
+              <p>Our implementation is <b>writer-preferring</b>: when <code>writersWaiting > 0</code>, new readers wait. Alternative: <b>reader-preferring</b> (new readers always proceed — writers may starve) or <b>fair</b> (FIFO queue order — most expensive). Java's <code>ReentrantReadWriteLock(true)</code> gives fair ordering.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-h"><span class="n">3</span><h2>Edge Cases &amp; Gotchas</h2></section>
+        <div class="callout"><b>Writer starvation without counter</b> — Without <code>writersWaiting</code>, a continuous stream of readers prevents the writer from ever acquiring the lock. Always include a mechanism to give writers priority when they're waiting.</div>
+        <div class="callout"><b>Read-then-write upgrade deadlock</b> — Thread A holds read lock, tries to acquire write lock → waits for readers to reach 0 → but A itself is a reader → deadlock. The solution: release read lock first, then acquire write lock (but this creates a gap where data may change).</div>
+        <div class="callout tip"><b>readUnlock only notifies when readers == 0</b> — No point waking a writer when other readers are still active. This optimization avoids unnecessary context switches. Only the last reader triggers notifyAll.</div>
+        <div class="callout info"><b>Why synchronized works here</b> — Unlike BlockingQueue (which needs two wait sets), RWLock only needs one: both readers and writers check their conditions in while loops after notifyAll wakes them. The simplicity of <code>synchronized</code> is sufficient.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <a href="../index.html">← Back to Hub</a> · Source: <code>src/main/java/dsa/concurrency/MyReadWriteLock.java</code>
+  </footer>
+
+</div>
+<script src="../assets/canvas.js"></script>
+</body>
+</html>
